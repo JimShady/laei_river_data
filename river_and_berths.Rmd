@@ -1,0 +1,29 @@
+---
+title: "LAEI River data"
+author: "James Smith"
+output: html_document
+date: "`r format(Sys.time(), '%Y-%m%-%d %H%:%M')`"
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") }) 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(sf)
+library(mapview)
+library(leaflet)
+```
+
+```{r import data, include=FALSE}
+
+berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+berths <- berths[-179,]
+river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+```
+
+## Map of berths and river shapefile
+
+```{r plot, echo=F}
+mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
+```
+

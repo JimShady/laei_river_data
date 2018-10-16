@@ -1,0 +1,1 @@
+"0","mapview(berths, map.types = c(""OpenStreetMap.BlackAndWhite"")) %>% addFeatures(river)"
