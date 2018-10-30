@@ -12,18 +12,76 @@ knitr::opts_chunk$set(echo = TRUE)
 library(sf)
 library(mapview)
 library(leaflet)
+library(tidyverse)
+library(BAMMtools)
+library(raster)
+```
+
+```{r, echo=F}
+latlong = "+init=epsg:4326"
+ukgrid = "+init=epsg:27700"
+google = "+init=epsg:3857"
 ```
 
 ```{r import data, include=FALSE}
 
-berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700) %>% st_transform(4326)
-berths <- berths[-179,]
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+#berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+#berths <- berths[-179,]
+#river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700) %>% st_transform(4326)
 ```
 
 ## Map of berths and river shapefile
 
 ```{r plot, echo=F}
-mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
+#mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
 ```
 
+## 100m grid of Thames emissions
+
+```{r grid_emissions, echo=F}
+
+emissions                   <- read_csv('emissions/inventory_export_2016.csv', col_types = cols())
+emissions                   <- aggregate(data=emissions, cbind(Sailing_kg, AtBerth_kg) ~ Substance + CellID, FUN=sum)
+emissions$CellID            <- as.numeric(emissions$CellID)
+
+grid                        <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
+
+grid_emissions              <- merge(emissions, grid, by.x = 'CellID', by.y = 'GRID_ID') 
+st_geometry(grid_emissions) <- grid_emissions$geom
+```
+
+Example of NOX while sailing
+
+```{r sailing_nox, echo=F}
+NOX <- grid_emissions[grid_emissions$Substance == 'NOx',]
+
+mapview(NOX, map.types = c("OpenStreetMap.BlackAndWhite"), zcol = 'Sailing_kg', at = round(getJenksBreaks(NOX$Sailing_kg, 10),0))
+
+rm(NOX)
+```
+
+Example of NOX while at berth
+
+```{r berth_nox, echo=F}
+NOX <- grid_emissions[grid_emissions$Substance == 'NOx',]
+
+mapview(NOX, map.types = c("OpenStreetMap.BlackAndWhite"), zcol = 'AtBerth_kg', at = round(getJenksBreaks(NOX$AtBerth_kg, 10),0))
+
+rm(NOX)
+```
+
+Now make a 10m x 10m grid covering the area of the river emissions. Filled with dummy data for now to visualise.
+
+```{r make_10m_grid, echo=FALSE, warning=FALSE}
+
+new_grid                  <- raster(extent(grid_emissions), res=10, crs = ukgrid)
+new_grid$sailing_points   <- 1:4550000
+
+mapview(new_grid$sailing_points, map.types = c("OpenStreetMap.BlackAndWhite"))
+```
+
+Now import one day of points from the processed AIS data (via Andrew), and count the number of points within each 10m cell
+
+```{r import_ais_data}
+
+```

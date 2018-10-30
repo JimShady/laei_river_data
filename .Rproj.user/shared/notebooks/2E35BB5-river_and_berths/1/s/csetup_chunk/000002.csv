@@ -2,3 +2,6 @@
 "0","library(sf)"
 "0","library(mapview)"
 "0","library(leaflet)"
+"0","library(tidyverse)"
+"0","library(BAMMtools)"
+"0","library(raster)"
