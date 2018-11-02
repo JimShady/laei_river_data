@@ -98,11 +98,25 @@ coordinates(gps_data) <- ~lon+lat
 proj4string(gps_data)  <- CRS(latlong)
 gps_data <- spTransform(gps_data, CRS(ukgrid))
 
-gps_grid <- rasterize(gps_data, new_grid, fun='count')
+gps_data <- crop(gps_data, new_grid)
+
+gps_data$time <- 1
+
+gps_grid <- rasterize(gps_data, new_grid, fun=sum)
+
+names(gps_grid) <- c('id', 'count')
 
 ```
 
 ```{r}
-mapview(new_grid$time, map.types = c("OpenStreetMap.BlackAndWhite"))
+mapview(new_grid$count, map.types = c("OpenStreetMap.BlackAndWhite"))
+
+```
+
+Aggregate the 10m count up to 100m so that know the number of points in each 100m cell
+
+```{r aggregate_up_to_100m}
+
+hundred_grid <- aggregate(gps_grid, fact = 10, fun=sum)
 
 ```
