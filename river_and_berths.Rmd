@@ -15,6 +15,7 @@ library(leaflet)
 library(tidyverse)
 library(BAMMtools)
 library(raster)
+library(sp)
 ```
 
 ```{r, echo=F}
@@ -54,7 +55,9 @@ Example of NOX while sailing
 
 ```{r sailing_nox, echo=F}
 NOX <- grid_emissions[grid_emissions$Substance == 'NOx',]
+```
 
+```{r, echo=F}
 mapview(NOX, map.types = c("OpenStreetMap.BlackAndWhite"), zcol = 'Sailing_kg', at = round(getJenksBreaks(NOX$Sailing_kg, 10),0))
 
 rm(NOX)
@@ -64,7 +67,9 @@ Example of NOX while at berth
 
 ```{r berth_nox, echo=F}
 NOX <- grid_emissions[grid_emissions$Substance == 'NOx',]
+```
 
+```{r, echo=F}
 mapview(NOX, map.types = c("OpenStreetMap.BlackAndWhite"), zcol = 'AtBerth_kg', at = round(getJenksBreaks(NOX$AtBerth_kg, 10),0))
 
 rm(NOX)
@@ -75,13 +80,29 @@ Now make a 10m x 10m grid covering the area of the river emissions. Filled with 
 ```{r make_10m_grid, echo=FALSE, warning=FALSE}
 
 new_grid                  <- raster(extent(grid_emissions), res=10, crs = ukgrid)
-new_grid$sailing_points   <- 1:4550000
+new_grid$sailing_points   <- NA
+```
 
+```{r}
 mapview(new_grid$sailing_points, map.types = c("OpenStreetMap.BlackAndWhite"))
 ```
 
 Now import one day of points from the processed AIS data (via Andrew), and count the number of points within each 10m cell
 
 ```{r import_ais_data}
+
+load('gps/apr1_AIS_decoded.Rdata')
+gps_data <- data
+rm(data)
+coordinates(gps_data) <- ~lon+lat
+proj4string(gps_data)  <- CRS(latlong)
+gps_data <- spTransform(gps_data, CRS(ukgrid))
+
+gps_grid <- rasterize(gps_data, new_grid, fun='count')
+
+```
+
+```{r}
+mapview(new_grid$time, map.types = c("OpenStreetMap.BlackAndWhite"))
 
 ```
