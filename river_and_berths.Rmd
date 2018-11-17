@@ -26,15 +26,15 @@ google = "+init=epsg:3857"
 
 ```{r import data, include=FALSE}
 
-#berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700) %>% st_transform(4326)
-#berths <- berths[-179,]
-#river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+berths <- berths[-179,]
+river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700) %>% st_transform(4326)
 ```
 
 ## Map of berths and river shapefile
 
 ```{r plot, echo=F}
-#mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
+mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
 ```
 
 ## 100m grid of Thames emissions
@@ -80,11 +80,13 @@ Now make a 10m x 10m grid covering the area of the river emissions. Filled with 
 ```{r make_10m_grid, echo=FALSE, warning=FALSE}
 
 new_grid                  <- raster(extent(grid_emissions), res=10, crs = ukgrid)
-new_grid$sailing_points   <- NA
+values(new_grid)          <- NA
+names(new_grid)           <- 'sailing_points'
+
 ```
 
 ```{r}
-mapview(new_grid$sailing_points, map.types = c("OpenStreetMap.BlackAndWhite"))
+mapview(new_grid, map.types = c("OpenStreetMap.BlackAndWhite"))
 ```
 
 Now import one day of points from the processed AIS data (via Andrew), and count the number of points within each 10m cell
@@ -108,6 +110,14 @@ names(gps_grid) <- c('id', 'count')
 
 ```
 
+```{r tag_berth_points}
+
+
+
+```
+
+
+
 ```{r}
 mapview(new_grid$count, map.types = c("OpenStreetMap.BlackAndWhite"))
 
@@ -120,3 +130,25 @@ Aggregate the 10m count up to 100m so that know the number of points in each 100
 hundred_grid <- aggregate(gps_grid, fact = 10, fun=sum)
 
 ```
+
+Then take the resolution back to 10m but keeping the number of points in each 100m 'block' the same
+
+```{r disagreggate_down_to_10m}
+
+ten_grid <- disaggregate(hundred_grid, fact = 10, fun = NA)
+
+```
+
+Now divide the number of points in each 10m grid, by the number of points in the surrounding 100m grid, to find out what percent of the 100m emissions each 10m grid cell is allocated
+
+```{r divide_10m_by_100m}
+
+gps_grid <- gps_grid / ten_grid
+
+rm(emissions, gps_data, grid, hundred_grid, new_grid, ten_grid)
+
+names(gps_grid) <- c('id','percent_of_gps_points_in_100m')
+
+```
+
+Make the berths into polygons.
