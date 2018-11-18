@@ -26,9 +26,9 @@ google = "+init=epsg:3857"
 
 ```{r import data, include=FALSE}
 
-berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700)
 berths <- berths[-179,]
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700) %>% st_transform(4326)
+river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
 ```
 
 ## Map of berths and river shapefile
@@ -75,7 +75,7 @@ mapview(NOX, map.types = c("OpenStreetMap.BlackAndWhite"), zcol = 'AtBerth_kg', 
 rm(NOX)
 ```
 
-Now make a 10m x 10m grid covering the area of the river emissions. Filled with dummy data for now to visualise.
+Now make a 10m x 10m grid covering the area of the river emissions.
 
 ```{r make_10m_grid, echo=FALSE, warning=FALSE}
 
@@ -85,11 +85,7 @@ names(new_grid)           <- 'sailing_points'
 
 ```
 
-```{r}
-mapview(new_grid, map.types = c("OpenStreetMap.BlackAndWhite"))
-```
-
-Now import one day of points from the processed AIS data (via Andrew), and count the number of points within each 10m cell
+Now import one day of points from the processed AIS data (via Andrew)
 
 ```{r import_ais_data}
 
@@ -102,24 +98,31 @@ gps_data <- spTransform(gps_data, CRS(ukgrid))
 
 gps_data <- crop(gps_data, new_grid)
 
-gps_data$time <- 1
-
-gps_grid <- rasterize(gps_data, new_grid, fun=sum)
-
-names(gps_grid) <- c('id', 'count')
+gps_data <- st_as_sf(gps_data) %>% st_set_crs(27700)
 
 ```
+
+Take the berth points, buffer 30m around them and then tag all gps points that are within those buffers with the berth name
 
 ```{r tag_berth_points}
 
+berths <- st_buffer(berths, 30)
 
+gps_data <- st_join(gps_data, berths, join = st_intersects)
 
 ```
 
-
+Now make two rasters. One for berth data, and one for moving data
 
 ```{r}
-mapview(new_grid$count, map.types = c("OpenStreetMap.BlackAndWhite"))
+
+gps_data$time       <- 1
+
+berth_grid          <- rasterize(gps_data[!is.na(gps_data$berth_name),1], new_grid, fun=sum)
+sailing_grid        <- rasterize(gps_data[is.na(gps_data$berth_name),1], new_grid, fun=sum)
+
+names(berth_grid)   <- c('id', 'count')
+names(sailing_grid) <- c('id', 'count')
 
 ```
 
@@ -127,7 +130,8 @@ Aggregate the 10m count up to 100m so that know the number of points in each 100
 
 ```{r aggregate_up_to_100m}
 
-hundred_grid <- aggregate(gps_grid, fact = 10, fun=sum)
+berth_hundred_grid   <- aggregate(berth_grid, fact = 10, fun=sum)
+sailing_hundred_grid <- aggregate(sailing_grid, fact = 10, fun=sum)
 
 ```
 
@@ -135,7 +139,8 @@ Then take the resolution back to 10m but keeping the number of points in each 10
 
 ```{r disagreggate_down_to_10m}
 
-ten_grid <- disaggregate(hundred_grid, fact = 10, fun = NA)
+berth_ten_grid     <- disaggregate(berth_hundred_grid, fact = 10, fun = NA)
+sailing_ten_grid   <- disaggregate(sailing_hundred_grid, fact = 10, fun = NA)
 
 ```
 
@@ -143,11 +148,13 @@ Now divide the number of points in each 10m grid, by the number of points in the
 
 ```{r divide_10m_by_100m}
 
-gps_grid <- gps_grid / ten_grid
+berth_grid    <- berth_grid   / berth_ten_grid
+sailing_grid  <- sailing_grid / sailing_ten_grid
 
 rm(emissions, gps_data, grid, hundred_grid, new_grid, ten_grid)
 
-names(gps_grid) <- c('id','percent_of_gps_points_in_100m')
+names(berth_grid)   <- c('id','percent_of_gps_points_in_100m')
+names(sailing_grid) <- c('id','percent_of_gps_points_in_100m')
 
 ```
 
