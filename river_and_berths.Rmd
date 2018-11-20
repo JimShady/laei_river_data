@@ -7,7 +7,11 @@ knit: (function(inputFile, encoding) {
   rmarkdown::render(inputFile, encoding = encoding, output_dir = "docs") }) 
 ---
 
-```{r setup, include=FALSE}
+Load libraries
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+# rmarkdown::render('river_and_berths.Rmd', encoding = 'html_document', output_dir = "docs")
+
 rm(list=ls(all=TRUE))
 
 knitr::opts_chunk$set(echo = TRUE)
@@ -20,30 +24,38 @@ library(raster)
 library(sp)
 library(viridis)
 library(rasterVis)
+library(rgeos)
 ```
 
-```{r, echo=F}
+Load coordinate reference systems
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
 latlong = "+init=epsg:4326"
 ukgrid = "+init=epsg:27700"
 google = "+init=epsg:3857"
 ```
 
-```{r import data, include=FALSE}
+Load rivers and berths shapefiles
 
-berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp') %>% st_set_crs(27700)
+```{r import data, echo=FALSE, message=FALSE, warning=FALSE}
+
+berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp', quiet = T) %>% st_set_crs(27700)
 berths <- berths[-179,]
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+
+
+river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp', quiet = T) %>% st_set_crs(27700)
+
 ```
 
-### Map of provided berths (shapefile)
+Check the berths look ok
 
-```{r berths_plot, echo=F}
-mapview(st_transform(berths,4326), map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(st_transform(river,4326))
+```{r berths_plot, echo=FALSE, message=FALSE, warning=FALSE}
+mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
 ```
 
-### Map of 1km emissions (sailing PM2.5 shown as example)
+Import the emissions from PLA. Note that they are 'exact cut'
 
-```{r grid_emissions, include=F}
+```{r grid_emissions, echo=FALSE, message=FALSE, warning=FALSE}
 
 emissions                   <- read_csv('emissions/inventory_export_2016.csv', col_types = cols())
 emissions                   <- aggregate(data=emissions, cbind(Sailing_kg, AtBerth_kg) ~ Substance + CellID, FUN=sum)
@@ -56,25 +68,97 @@ st_geometry(grid_emissions) <- grid_emissions$geom
 
 ```
 
-```{r emissions_pm25_plot, echo=F}
-mapview(st_transform(grid_emissions[grid_emissions$Substance == 'PM2.5','Sailing_kg'],4326), map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(st_transform(river,4326))
+Take a look at the emissions (Sailing NO2)
+
+```{r emissions_pm25_plot, echo=FALSE, message=FALSE, warning=FALSE}
+mapview(grid_emissions[grid_emissions$Substance == 'N2O','Sailing_kg'], map.types = c("OpenStreetMap.BlackAndWhite"))
 ```
 
-### Process emissions to raster
+Let's turn these exact cuts into 1km squares.
 
-Make a raster stack of the emissions by pollutant, and by sailing/berth
+```{r process_exaxt_cuts, echo=FALSE, message=FALSE, warning=FALSE }
 
-```{r turn_into_raster_stack, include=F}
+grid_emissions <- grid_emissions[,c('GRID_ID0', 'Sailing_kg', 'AtBerth_kg', 'Substance')]
+
+grid_emissions = grid_emissions %>% 
+  group_by(GRID_ID0, Substance) %>% 
+  summarise(sailing = sum(Sailing_kg, na.rm = TRUE),
+            berth = sum(AtBerth_kg, na.rm = TRUE))
+
+```
+
+Now take another look to check it's summed them correctly.
+
+```{r emissions_no2_plot_v2, echo=FALSE, message=FALSE, warning=FALSE}
+mapview(grid_emissions[grid_emissions$Substance == 'N2O','sailing'], map.types = c("OpenStreetMap.BlackAndWhite"))
+```
+
+Turn the SF cells into spatialpolygons
+
+```{r convert_sf}
+
+grid_emissions <- grid_emissions[grid_emissions$Substance == 'N2O',][83,]
+
+```
+
+Would like the emissions as rasters rather than polygons. First make an empty raster the same dimensions as the above, and fill it with dummy data.
+
+```{r turn_into_raster_stack, echo=FALSE, message=FALSE, warning=FALSE}
 #Empty raster
-r  <- raster(as(grid_emissions, "Spatial"),  res = 1000)
+r  <- raster(ext =  extent(grid_emissions),
+             res =  1000,
+             crs =  ukgrid,
+             vals = 1)
+```
 
+Check that this looks ok.
+
+```{r aplot, echo=FALSE, message=FALSE, warning=FALSE}
+plot(r)
+plot(grid_emissions[grid_emissions$Substance == 'N2O','sailing'], add=T)
+```
+
+```{r}
+
+grid_emissions <- as(grid_emissions, 'Spatial')
+
+grid_emissions <- SpatialPointsDataFrame(grid_emissions, grid_emissions@data)
+
+values(r) <- NA
+
+cell_numbers <- cellFromXY(r, grid_emissions[grid_emissions$Substance == 'N2O','sailing'])
+
+r[cell_numbers] <- grid_emissions[grid_emissions$Substance == 'N2O','sailing']$sailing
+
+```
+
+
+
+
+
+
+
+
+Now want to update 'r' (the base raster) with the values from the spatialpolygons. With a new layer for each metric.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}}
+
+no2_test <- rasterize(grid_emissions[grid_emissions$Substance == 'N2O',], r, 'sailing')
+
+```
+
+```{r}
 pollutants <- unique(grid_emissions$Substance)
+
+
+
+
 
 for (i in 1:length(pollutants)) {
   
-  berth          <- rasterize(as(grid_emissions[grid_emissions$Substance == pollutants[i],], "Spatial"), r, field = 'AtBerth_kg')
+  berth          <- rasterize(grid_emissions[grid_emissions$Substance == pollutants[i],], r, field = 'AtBerth_kg', fun=sum)
   names(berth)   <- paste0('berth_', pollutants[i])
-  sailing        <- rasterize(as(grid_emissions[grid_emissions$Substance == pollutants[i],], "Spatial"), r, field = 'Sailing_kg')
+  sailing        <- rasterize(grid_emissions[grid_emissions$Substance == pollutants[i],], r, field = 'Sailing_kg', fun=sum)
   names(sailing) <- paste0('sailing_', pollutants[i])
   
   if (i == 1) {emissions <- stack(berth, sailing)} else {emissions <- stack(emissions, berth)
@@ -87,35 +171,31 @@ rm(berth, sailing, r, grid_emissions, pollutants,i)
 
 Plot of NO2 sailing emissions raster
 
-```{r emissions_sailing_co_raster_plot, echo=F}
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+```{r emissions_sailing_co_raster_plot, echo=F, message=F, warning=F}
 
-plot <- levelplot(emissions[['sailing_N2O']],
-          margin=F,
-          col.regions=viridis,
-          scales=list(draw=F)) + 
+plot(emissions[['sailing_N2O']])
+plot(river, add=T)
   layer(sp.polygons(as(river, 'Spatial'), col ='red'))
 
-plot
+
 ```
 
 Plot of NO2 berth emissions raster
 
-```{r emissions_berth_co_raster_plot, echo=F}
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+```{r emissions_berth_co_raster_plot, echo=F, message=F, warning=F}
 
-plot <- levelplot(emissions[['berth_N2O']],
+levelplot(emissions[['berth_N2O']],
           margin=F,
           col.regions=viridis,
           scales=list(draw=F)) + 
   layer(sp.polygons(as(river, 'Spatial'), col ='red'))
 
-plot
+
 ```
 
 ### Process GPS data
 
-```{r make_10m_grid, echo=FALSE, warning=FALSE, include=F}
+```{r make_10m_grid, echo=F, message=F, warning=F}
 # Make a 10m x 10m grid covering the area of the river emissions.
 
 new_grid                  <- raster(extent(emissions), res=10, crs = ukgrid)
@@ -123,7 +203,7 @@ values(new_grid)          <- NA
 
 ```
 
-```{r import_ais_data, echo=F, warning=FALSE, include=F}
+```{r import_ais_data, echo=F, message=F, warning=F}
 # Now import one day of points from the processed AIS data (via Andrew)
 
 load('gps/apr1_AIS_decoded.Rdata')
@@ -139,7 +219,7 @@ gps_data <- st_as_sf(gps_data) %>% st_set_crs(27700)
 
 ```
 
-```{r tag_berth_points, include=F}
+```{r tag_berth_points, echo=F, message=F, warning=F}
 # Take the berth points, buffer 30m around them and then tag all gps points that are within those buffers with the berth name
 
 berths <- st_buffer(berths, 30)
@@ -150,7 +230,7 @@ gps_data <- st_join(gps_data, berths, join = st_intersects)
 
 Count GPS points in each 10m grid square. Create two rasters, one for 'at berth' and one for sailing.
 
-```{r, include=F}
+```{r, echo=F, message=F, warning=F}
 
 gps_data$time       <- 1
 
@@ -164,10 +244,9 @@ names(sailing_grid) <- c('id', 'count')
 
 Plot of 10m counted GPS sailing points
 
-```{r sailing_gps_points, echo=F}
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+```{r sailing_gps_points, echo=F, message=F, warning=F}
 
-plot <- levelplot(sailing_grid[['count']],
+levelplot(sailing_grid[['count']],
           margin=F,
           col.regions=viridis,
           scales=list(draw=F),
@@ -175,15 +254,13 @@ plot <- levelplot(sailing_grid[['count']],
           ylim=c(177000,182000)) + 
   layer(sp.polygons(as(river, 'Spatial'), col ='red'))
 
-plot
 ```
 
 Plot of 10m counted GPS berth points
 
-```{r berth_gps_points, echo=F}
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+```{r berth_gps_points, echo=F, message=F, warning=F}
 
-plot <- levelplot(berth_grid[['count']],
+levelplot(berth_grid[['count']],
           margin=F,
           col.regions=viridis,
           scales=list(draw=F),
@@ -191,10 +268,9 @@ plot <- levelplot(berth_grid[['count']],
           ylim=c(177000,182000)) + 
   layer(sp.polygons(as(river, 'Spatial'), col ='red'))
 
-plot
 ```
 
-```{r aggregate_up_to_100m, include=F}
+```{r aggregate_up_to_100m, echo=F, message=F, warning=F}
 # Aggregate the 10m count up to 1000m so that we know the number of points in each 1000m cell
 
 berth_1km_grid        <- aggregate(berth_grid,   fact = 100, fun=sum)
@@ -202,7 +278,7 @@ sailing_1km_grid      <- aggregate(sailing_grid, fact = 100, fun=sum)
 
 ```
 
-```{r disagreggate_down_to_10m, include=F}
+```{r disagreggate_down_to_10m, echo=F, message=F, warning=F}
 # Then take the resolution back to 10m but keeping the number of points in each 1000m 'block' the same
 
 berth_ten_m_grid     <- disaggregate(berth_1km_grid,   fact = 100, fun = NA)
@@ -212,7 +288,7 @@ sailing_ten_m_grid   <- disaggregate(sailing_1km_grid, fact = 100, fun = NA)
 
 Now divide the number of points in each 10m grid, by the number of points in the surrounding 1000m grid, to find out what percent of the 1000m emissions each 10m grid cell is allocated
 
-```{r divide_10m_by_100m, echo=F}
+```{r divide_10m_by_100m, echo=F, message=F, warning=F}
 
 berth_grid    <- berth_grid   / berth_ten_m_grid
 sailing_grid  <- sailing_grid / sailing_ten_m_grid
@@ -228,7 +304,7 @@ names(sailing_grid) <- c('id','percent_of_100m_emissions')
 
 So now have 'berth_grid' and 'sailing_grid' which are 10m cells, and in each cell is a number between 0 and 1, which is the percentage of the 100m cell emissions that belong to that cell. The emissions are a raster stack of 100m resolution. So 'pull down' to the 10m grid cell, the amount of emissions from the 1km grid cell, based on the GPS points in that cell divided by the GPS points in the 1km cell.
 
-```{r pm25, echo=F}
+```{r pm25, echo=F, message=F, warning=F}
 
 pm25_sailing_emissions        <- disaggregate(emissions[['sailing_PM2.5']], fact = 100, fun = NA)
 pm25_sailing_emissions        <- pm25_sailing_emissions$sailing_PM2.5 * sailing_grid$percent_of_100m_emissions
@@ -245,33 +321,27 @@ write.csv(pm25_berth_emissions_out, 'results/pm25_berth_emissions.csv', row.name
 ```
 
 Plot of 10m PM2.5 sailing emissions
-```{r results_pm25_sailing_plot}
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+```{r results_pm25_sailing_plot, echo=F, message=F, warning=F}
 
-plot <- levelplot(pm25_sailing_emissions,
+levelplot(pm25_sailing_emissions,
           margin=F,
           col.regions=viridis,
           scales=list(draw=F),
           xlim=c(535000,545000),
           ylim=c(177000,182000)) + 
   layer(sp.polygons(as(river, 'Spatial'), col ='red'))
-
-plot
 
 ```
 
 Plot of 10m PM2.5 berth emissions
-```{r results_pm25_berth_plot}
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp') %>% st_set_crs(27700)
+```{r results_pm25_berth_plot, echo=F, message=F, warning=F}
 
-plot <- levelplot(pm25_berth_emissions,
+levelplot(pm25_berth_emissions,
           margin=F,
           col.regions=viridis,
           scales=list(draw=F),
           xlim=c(535000,545000),
           ylim=c(177000,182000)) + 
   layer(sp.polygons(as(river, 'Spatial'), col ='red'))
-
-plot
 
 ```
