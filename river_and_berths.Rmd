@@ -97,7 +97,7 @@ Turn the SF cells into spatialpolygons
 
 ```{r convert_sf}
 
-grid_emissions <- grid_emissions[grid_emissions$Substance == 'N2O',][83,]
+grid_emissions <- grid_emissions[grid_emissions$Substance == 'N2O',]
 
 ```
 
@@ -108,7 +108,7 @@ Would like the emissions as rasters rather than polygons. First make an empty ra
 r  <- raster(ext =  extent(grid_emissions),
              res =  1000,
              crs =  ukgrid,
-             vals = 1)
+             vals = NA)
 ```
 
 Check that this looks ok.
@@ -120,37 +120,21 @@ plot(grid_emissions[grid_emissions$Substance == 'N2O','sailing'], add=T)
 
 ```{r}
 
-grid_emissions <- as(grid_emissions, 'Spatial')
+grid_emissions  <- as(grid_emissions, 'Spatial')
 
-grid_emissions <- SpatialPointsDataFrame(grid_emissions, grid_emissions@data)
+grid_emissions  <- SpatialPointsDataFrame(grid_emissions, grid_emissions@data)
 
-values(r) <- NA
-
-cell_numbers <- cellFromXY(r, grid_emissions[grid_emissions$Substance == 'N2O','sailing'])
+cell_numbers    <- cellFromXY(r, grid_emissions[grid_emissions$Substance == 'N2O','sailing'])
 
 r[cell_numbers] <- grid_emissions[grid_emissions$Substance == 'N2O','sailing']$sailing
 
-```
-
-
-
-
-
-
-
-
-Now want to update 'r' (the base raster) with the values from the spatialpolygons. With a new layer for each metric.
-
-```{r, echo=FALSE, message=FALSE, warning=FALSE}}
-
-no2_test <- rasterize(grid_emissions[grid_emissions$Substance == 'N2O',], r, 'sailing')
+names(r) <- 'sailing_no2'
 
 ```
+
 
 ```{r}
 pollutants <- unique(grid_emissions$Substance)
-
-
 
 
 
