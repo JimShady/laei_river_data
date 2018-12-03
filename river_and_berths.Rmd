@@ -39,11 +39,11 @@ Load rivers and berths shapefiles
 
 ```{r import data, echo=FALSE, message=FALSE, warning=FALSE}
 
-berths <- st_read('X:/Projects/PLA/GIS/Shapefiles/Berths.shp', quiet = T) %>% st_set_crs(27700)
+berths <- st_read('shapefiles/Berths.shp', quiet = T) %>% st_set_crs(27700)
 berths <- berths[-179,]
 
 
-river  <- st_read('X:/Projects/PLA/GIS/Shapefiles/River Thames Outline.shp', quiet = T) %>% st_set_crs(27700)
+river  <- st_read('shapefiles/River Thames Outline.shp', quiet = T) %>% st_set_crs(27700)
 
 ```
 
@@ -53,84 +53,93 @@ Check the berths look ok
 mapview(berths, map.types = c("OpenStreetMap.BlackAndWhite")) %>% addFeatures(river)
 ```
 
-Import the emissions from PLA. Note that they are 'exact cut'
+Import the emissions from PLA and grid shapefile. Note that they are 'exact cut'.
 
 ```{r grid_emissions, echo=FALSE, message=FALSE, warning=FALSE}
 
+# Emissions by exact cut, substance and vessel type
 emissions                   <- read_csv('emissions/inventory_export_2016.csv', col_types = cols())
-emissions                   <- aggregate(data=emissions, cbind(Sailing_kg, AtBerth_kg) ~ Substance + CellID, FUN=sum)
+emissions                   <- emissions[emissions$LAEIPLAExt == 'LAEI',]
+emissions                   <- emissions[,c('VesselType', 'Substance', 'CellID', 'Sailing_kg', 'AtBerth_kg')]
 emissions$CellID            <- as.numeric(emissions$CellID)
+names(emissions)            <- c('ship_type', 'pollutant', 'cellid', 'sailing', 'berth')
+pollutants_we_want          <- c('PM', 'PM2.5', 'NOx')
+emissions                   <- emissions[emissions$pollutant %in% pollutants_we_want,]
 
+#Now get the grid by exact cut
 grid                        <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
+grid                        <- grid[grid$LAEIPLAExt == 'LAEI',]
+grid                        <- grid[,c('GRID_ID0', 'CellID')]
+names(grid)                 <- c('gridid', 'cellid', 'geom')
 
-grid_emissions              <- merge(emissions, grid, by.x = 'CellID', by.y = 'GRID_ID') 
-st_geometry(grid_emissions) <- grid_emissions$geom
+# Link grid exact cut to eimssions exat cut
+grid_emissions              <- merge(emissions, grid, by.x = 'cellid', by.y = 'cellid')
 
-```
+grid_emissions              <- st_set_geometry(grid_emissions, grid_emissions$geom)
 
-Take a look at the emissions (Sailing NO2)
+plot(grid_emissions[grid_emissions$ship_type == 'Passenger' & grid_emissions$pollutant == 'N2O','sailing'])
 
-```{r emissions_pm25_plot, echo=FALSE, message=FALSE, warning=FALSE}
-mapview(grid_emissions[grid_emissions$Substance == 'N2O','Sailing_kg'], map.types = c("OpenStreetMap.BlackAndWhite"))
-```
-
-Let's turn these exact cuts into 1km squares.
-
-```{r process_exaxt_cuts, echo=FALSE, message=FALSE, warning=FALSE }
-
-grid_emissions <- grid_emissions[,c('GRID_ID0', 'Sailing_kg', 'AtBerth_kg', 'Substance')]
-
-grid_emissions = grid_emissions %>% 
-  group_by(GRID_ID0, Substance) %>% 
-  summarise(sailing = sum(Sailing_kg, na.rm = TRUE),
-            berth = sum(AtBerth_kg, na.rm = TRUE))
+rm(grid, emissions)
 
 ```
 
-Now take another look to check it's summed them correctly.
+Import GPS data for one day and tag as berth or not
 
-```{r emissions_no2_plot_v2, echo=FALSE, message=FALSE, warning=FALSE}
-mapview(grid_emissions[grid_emissions$Substance == 'N2O','sailing'], map.types = c("OpenStreetMap.BlackAndWhite"))
+```{r import_ais_data, echo=F, message=F, warning=F}
+# Now import one day of points from the processed AIS data (via Andrew)
+
+load('gps/apr1_AIS_decoded.Rdata')
+gps_data                <- data
+rm(data)
+coordinates(gps_data)   <- ~lon+lat
+proj4string(gps_data)   <- CRS(latlong)
+gps_data                <- spTransform(gps_data, CRS(ukgrid))
+gps_data                <- st_as_sf(gps_data)
+gps_data                <- gps_data %>% st_set_crs(27700)
+gps_data                <- st_crop(gps_data, grid_emissions)
+
+berths                  <- st_buffer(berths, 30)
+gps_data                <- st_join(gps_data, berths, join = st_intersects)
+
+gps_data                <- gps_data[,c('time', 'berth_name', 'geometry')]
+names(gps_data)         <- c('time', 'berth', 'geometry')
+
+gps_data$time           <- 1
+
 ```
 
-Turn the SF cells into spatialpolygons
+Make a 10m grid covering the area
 
-```{r convert_sf}
-
-grid_emissions <- grid_emissions[grid_emissions$Substance == 'N2O',]
+```{r}
+blank_raster <- raster(ext = extent(grid_emissions),
+                       crs = ukgrid,
+                       res = 10,
+                       vals = NULL)
 
 ```
 
-Would like the emissions as rasters rather than polygons. First make an empty raster the same dimensions as the above, and fill it with dummy data.
-
-```{r turn_into_raster_stack, echo=FALSE, message=FALSE, warning=FALSE}
-#Empty raster
-r  <- raster(ext =  extent(grid_emissions),
-             res =  1000,
-             crs =  ukgrid,
-             vals = NA)
-```
-
-Check that this looks ok.
-
-```{r aplot, echo=FALSE, message=FALSE, warning=FALSE}
-plot(r)
-plot(grid_emissions[grid_emissions$Substance == 'N2O','sailing'], add=T)
-```
+Now let's just do NO2 and shipping. First how many GPS points are in each 10m grid square.
 
 ```{r}
 
-grid_emissions  <- as(grid_emissions, 'Spatial')
+gps_counts   <- rasterize(gps_data, blank_raster, field = 'time', fun=sum)
 
-grid_emissions  <- SpatialPointsDataFrame(grid_emissions, grid_emissions@data)
+rm(blank_raster)
+```
 
-cell_numbers    <- cellFromXY(r, grid_emissions[grid_emissions$Substance == 'N2O','sailing'])
+Now if we turn this 10m raster into points .... count how many points are in each emissions polygon ... and do some division?
 
-r[cell_numbers] <- grid_emissions[grid_emissions$Substance == 'N2O','sailing']$sailing
-
-names(r) <- 'sailing_no2'
+```{r}
 
 ```
+
+
+
+
+
+
+
+
 
 
 ```{r}
@@ -187,30 +196,8 @@ values(new_grid)          <- NA
 
 ```
 
-```{r import_ais_data, echo=F, message=F, warning=F}
-# Now import one day of points from the processed AIS data (via Andrew)
 
-load('gps/apr1_AIS_decoded.Rdata')
-gps_data <- data
-rm(data)
-coordinates(gps_data) <- ~lon+lat
-proj4string(gps_data)  <- CRS(latlong)
-gps_data <- spTransform(gps_data, CRS(ukgrid))
 
-gps_data <- crop(gps_data, new_grid)
-
-gps_data <- st_as_sf(gps_data) %>% st_set_crs(27700)
-
-```
-
-```{r tag_berth_points, echo=F, message=F, warning=F}
-# Take the berth points, buffer 30m around them and then tag all gps points that are within those buffers with the berth name
-
-berths <- st_buffer(berths, 30)
-
-gps_data <- st_join(gps_data, berths, join = st_intersects)
-
-```
 
 Count GPS points in each 10m grid square. Create two rasters, one for 'at berth' and one for sailing.
 
