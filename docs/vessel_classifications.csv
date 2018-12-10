@@ -1,0 +1,68 @@
+registry_class,aggregated_class,group,code,release_height,fuel_type
+crude oil tanker,Oil tanker,4,TCR,50,Diesel
+Combined chemical and oil tanker,Oil tanker,4,TCO,50,Diesel
+Liquefied Natural Gas Carrier,Chemical/LNG/LPG tanker,4,LNG,50,Diesel
+Liquefied Petroleum Gas Carrier,Chemical/LNG/LPG tanker,4,LPG,50,Diesel
+tank barge,Chemical/LNG/LPG tanker,4,OTB,50,Diesel
+asphalt tanker,Chemical/LNG/LPG tanker,4,TAS,50,Diesel
+bunkering tanker,Chemical/LNG/LPG tanker,4,TBK,50,Diesel
+chemical tanker,Chemical/LNG/LPG tanker,4,TCH,50,Diesel
+edible oil tanker,Chemical/LNG/LPG tanker,4,TEO,50,Diesel
+product tanker,Chemical/LNG/LPG tanker,4,TPD,50,Diesel
+Tanker (unspecified),Chemical/LNG/LPG tanker,4,TTA,50,Diesel
+water tanker,Chemical/LNG/LPG tanker,4,TWT,50,Diesel
+bulk carrier,Bulk carrier,3,BBU,30,Diesel
+bulk carrier with container capacity,Bulk carrier,3,BCB,30,Diesel
+bulk cement carrier,Bulk carrier,3,BCE,30,Diesel
+wood-chip carrier,Bulk carrier,3,BWC,30,Diesel
+fully cellular containership,Container ship,4,UCC,50,Diesel
+fully cellular refrigerated,Container ship,4,UCR,50,Diesel
+cargo/training,General Dry Cargo,3,GCT,30,Diesel
+general cargo,General Dry Cargo,3,GGC,30,Diesel
+general cargo with container capacity,General Dry Cargo,3,GPC,30,Diesel
+livestock,General Dry Cargo,3,MLV,30,Diesel
+barge,General Dry Cargo,3,OBA,30,Diesel
+hopper barge,General Dry Cargo,3,OHB,30,Diesel
+vehicle carrier,RoRo Cargo/Vehicle,4,MVE,50,Diesel
+roll on roll off with container capacity,RoRo Cargo/Vehicle,4,URC,50,Diesel
+Roll on Roll off (RoRo),RoRo Cargo/Vehicle,4,URR,50,Diesel
+reefer,Reefer,4,GRF,50,Diesel
+passenger RoRo,Passenger (cruise),4,PRR,50,Diesel
+passenger (cruise),Passenger (cruise),4,MPR,50,Diesel
+ferry,Passenger (ferry),1,OFY,5,Diesel
+cutter suction dredger,Dredger,2,DCS,17.5,Diesel
+dredger,Dredger,2,DDR,17.5,Diesel
+hopper dredger,Dredger,2,DHD,17.5,Diesel
+suction hopper dredger,Dredger,2,DSH,17.5,Diesel
+sand suction dredger,Dredger,2,DSS,17.5,Diesel
+trailing suction dredger,Dredger,2,DTD,17.5,Diesel
+trailing suction hopper dredger,Dredger,2,DTS,17.5,Diesel
+cable ship,Miscellaneous,2,OCL,17.5,Diesel
+diving support,Miscellaneous,2,ODS,17.5,Diesel
+exhibition ship,Miscellaneous,2,OES,17.5,Diesel
+semi-sub HL vessel,Miscellaneous,2,OHL,17.5,Diesel
+landing craft,Miscellaneous,2,OLC,17.5,Diesel
+lighthouse/tender,Miscellaneous,2,OLT,17.5,Diesel
+maintenance,Miscellaneous,2,OMT,17.5,Diesel
+patrol ship,Miscellaneous,2,OPA,17.5,Diesel
+pontoon,Miscellaneous,2,OPO,17.5,Diesel
+repair ship,Miscellaneous,2,ORP,17.5,Diesel
+support,Miscellaneous,2,OSU,17.5,Diesel
+salvage,Miscellaneous,2,OSV,17.5,Diesel
+training,Miscellaneous,2,OTR,17.5,Diesel
+work ship,Miscellaneous,2,OWO,17.5,Diesel
+research,Miscellaneous,2,RRE,17.5,Diesel
+seismographic research,Miscellaneous,2,RSR,17.5,Diesel
+supply,Tug/Supply,2,OSY,17.5,Diesel
+anchor handling tug/supply,Tug/Supply,2,XAH,17.5,Diesel
+anchor handling tug,Tug/Supply,2,XAT,17.5,Diesel
+fire fighting tug,Tug/Supply,2,XFF,17.5,Diesel
+pusher tug,Tug/Supply,2,XPT,17.5,Diesel
+salvage tug,Tug/Supply,2,XST,17.5,Diesel
+tug,Tug/Supply,2,XTG,17.5,Diesel
+tractor tug,Tug/Supply,2,XTR,17.5,Diesel
+tug/supply,Tug/Supply,2,XTS,17.5,Diesel
+fishing (general),Fishing,2,FFS,17.5,Diesel
+trawler (All types),Fishing,2,FTR,17.5,Diesel
+Naval Vessel,Non Merchant,4,NAV,50,Diesel
+yacht,Non Merchant,4,OYT,50,Diesel
