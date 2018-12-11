@@ -65,6 +65,14 @@ grid_emissions            <- st_set_geometry(grid_emissions, grid_emissions$geom
 
 rm(emissions, grid)
 
+# The emissions are split by ship_type, but we can do it by group instead. So need to aggregate .
+
+
+grid_emissions <- grid_emissions %>%
+                    group_by(pollutant, group) %>%
+                      summarise(sailing = sum(sailing),
+                                berth = sum(berth))
+
 ##### SO NOW PAUSING AT THIS POINT WE HAVE THE FOLLOWING
 ## gps_data       : large number of GPS point, each with a group identifying each type of ship
 ## grid_emissions : 192 grid exact cuts. When multiplied by pollutants (3), and emission type, we end up with 1053 grid 'exact cut' polygons.
@@ -78,5 +86,9 @@ grid_emissions  <- filter(grid_emissions, pollutant == 'NOx' & group == 2)   # J
 ## So now make a grid of points inside each polygon, turn the grid into a raster, and collect the GPS points for each area?
 ## Can get a unique grid using this? unique(grid_emissions[,'geom'])
 
-plot(st_make_grid(unique(grid_emissions[,'geom'], cellsize = .1, square = TRUE, what = 'centers')), add=T)
+fifty_m_grid <- st_make_grid(unique(grid_emissions[,'geom']), cellsize = 50, square = TRUE, what = 'polygons') %>% st_intersection(unique(grid_emissions[,'geom']))
+
+
+
+
              
