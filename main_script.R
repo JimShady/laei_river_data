@@ -2,6 +2,8 @@ rm(list=ls(all=TRUE))
 
 library(sf)
 library(tidyverse)
+source('https://raw.githubusercontent.com/r-spatial/sf/master/R/join.R')
+source('https://raw.githubusercontent.com/r-spatial/sf/master/R/tidyverse.R')
 
 ## Script to process river emissions and GPS data.
 ## Key datasets
@@ -67,11 +69,10 @@ rm(emissions, grid)
 
 # The emissions are split by ship_type, but we can do it by group instead. So need to aggregate .
 
-
 grid_emissions <- grid_emissions %>%
                     group_by(pollutant, group) %>%
                       summarise(sailing = sum(sailing),
-                                berth = sum(berth))
+                                berth   = sum(berth))
 
 ##### SO NOW PAUSING AT THIS POINT WE HAVE THE FOLLOWING
 ## gps_data       : large number of GPS point, each with a group identifying each type of ship
