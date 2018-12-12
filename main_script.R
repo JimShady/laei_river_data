@@ -2,8 +2,6 @@ rm(list=ls(all=TRUE))
 
 library(sf)
 library(tidyverse)
-source('https://raw.githubusercontent.com/r-spatial/sf/master/R/join.R')
-source('https://raw.githubusercontent.com/r-spatial/sf/master/R/tidyverse.R')
 
 ## Script to process river emissions and GPS data.
 ## Key datasets
