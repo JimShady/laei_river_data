@@ -59,34 +59,40 @@ grid                      <- grid[grid$LAEIPLAExt == 'LAEI',]
 grid                      <- grid[,c('GRID_ID0', 'CellID')]
 names(grid)               <- c('gridid', 'cellid', 'geom')
 
-# Link grid exact cut to eimssions exact cut
+# Link grid exact cut to eimssions exact cut, and remove some unncecessary data
 grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'cellid'))
 grid_emissions            <- st_set_geometry(grid_emissions, grid_emissions$geom)
+grid_emissions$ship_type  <- NULL
+grid_emissions$cellid     <- NULL
+grid_emissions$gridid     <- NULL
 
 rm(emissions, grid)
 
-# The emissions are split by ship_type, but we can do it by group instead. So need to aggregate .
-
-grid_emissions <- grid_emissions %>%
-                    group_by(pollutant, group) %>%
-                      summarise(sailing = sum(sailing),
-                                berth   = sum(berth))
+# The emissions are split by ship_type, but we can do it by 'group' instead. So need to aggregate .
+grid_emissions$geom_group <- sapply(st_equals(grid_emissions), max)
+grid_emissions            <- grid_emissions %>%
+                                group_by(geom_group, pollutant, group) %>%
+                                summarise(sailing = sum(sailing),
+                                          berth   = sum(berth))
+grid_emissions$geom_group <- NULL
 
 ##### SO NOW PAUSING AT THIS POINT WE HAVE THE FOLLOWING
 ## gps_data       : large number of GPS point, each with a group identifying each type of ship
-## grid_emissions : 192 grid exact cuts. When multiplied by pollutants (3), and emission type, we end up with 1053 grid 'exact cut' polygons.
+## grid_emissions : 192 grid exact cuts. When multiplied by pollutants (3), and emission type i.e. 'group', we end up with 1590 grid 'exact cut' polygons.
 
 ## Now want to thin things out to see how I get on.
 gps_data        <- filter(gps_data, group == 2)                              # Just look at group 2
-grid_emissions  <- filter(grid_emissions, pollutant == 'NOx' & group == 2)   # Just look at NOx emissions
+grid_emissions  <- as.data.frame(grid_emissions) %>% filter(pollutant == 'NOx' & group == 2) %>% st_set_geometry('geom')   # Just look at NOx emissions for group 2
 
 ## https://stackoverflow.com/questions/47171710/create-a-grid-inside-a-shapefile
 
-## So now make a grid of points inside each polygon, turn the grid into a raster, and collect the GPS points for each area?
-## Can get a unique grid using this? unique(grid_emissions[,'geom'])
+## So now make a grid of points inside each polygon
 
-fifty_m_grid <- st_make_grid(unique(grid_emissions[,'geom']), cellsize = 50, square = TRUE, what = 'polygons') %>% st_intersection(unique(grid_emissions[,'geom']))
+fifty_m_grid    <- st_make_grid(grid_emissions, cellsize = 50, square = TRUE, what = 'polygons')
 
+fifty_m_grid    <- st_sf(data.frame(value = 1:182000, geom = fifty_m_grid))
+
+fifty_m_grid    <- st_join(x = grid_emissions, y = fifty_m_grid, join = st_touches(), left = TRUE)
 
 
 
