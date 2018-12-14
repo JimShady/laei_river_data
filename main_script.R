@@ -2,6 +2,7 @@ rm(list=ls(all=TRUE))
 
 library(sf)
 library(tidyverse)
+library(mapview)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets
@@ -70,10 +71,12 @@ rm(emissions, grid)
 
 # The emissions are split by ship_type, but we can do it by 'group' instead. So need to aggregate .
 grid_emissions$geom_group <- sapply(st_equals(grid_emissions), max)
+
 grid_emissions            <- grid_emissions %>%
                                 group_by(geom_group, pollutant, group) %>%
                                 summarise(sailing = sum(sailing),
                                           berth   = sum(berth))
+
 grid_emissions$geom_group <- NULL
 
 ##### SO NOW PAUSING AT THIS POINT WE HAVE THE FOLLOWING
@@ -82,18 +85,40 @@ grid_emissions$geom_group <- NULL
 
 ## Now want to thin things out to see how I get on.
 gps_data        <- filter(gps_data, group == 2)                              # Just look at group 2
-grid_emissions  <- as.data.frame(grid_emissions) %>% filter(pollutant == 'NOx' & group == 2) %>% st_set_geometry('geom')   # Just look at NOx emissions for group 2
+grid_emissions  <- ungroup(grid_emissions) %>% filter(pollutant == 'NOx' & group == 2) %>% st_set_geometry('geom')   # Just look at NOx emissions for group 2
 
-## https://stackoverflow.com/questions/47171710/create-a-grid-inside-a-shapefile
+## Count how many GPS points within each large emission grid
+grid_emissions$id  <- 1:nrow(grid_emissions) 
 
-## So now make a grid of points inside each polygon
+gps_per_grid_id         <- st_join(gps_data, grid_emissions[,c('id')])
+gps_per_grid_id         <- data.frame(table(gps_per_grid_id$id))
+names(gps_per_grid_id)  <- c('grid_id', 'total_gps_count')
+gps_per_grid_id$grid_id <- as.integer(gps_per_grid_id$grid_id)
+grid_emissions         <- left_join(grid_emissions, gps_per_grid_id, by = c("id" = "grid_id"))
 
-fifty_m_grid    <- st_make_grid(grid_emissions, cellsize = 50, square = TRUE, what = 'polygons')
+## So now make a grid of 50m polygons which are inside the larger polygons
+fifty_m_grid    <- st_make_grid(grid_emissions, cellsize = 50, what = 'polygons') %>% st_sf()
 
-fifty_m_grid    <- st_sf(data.frame(value = 1:182000, geom = fifty_m_grid))
+# At this point need to count the GPS points instead my smaller polygons
+fifty_m_grid$id       <- 1:nrow(fifty_m_grid)
+gps_per_small_grid    <- st_join(gps_data, fifty_m_grid[,c('id')])
 
-fifty_m_grid    <- st_join(x = grid_emissions, y = fifty_m_grid, join = st_touches(), left = TRUE)
+gps_per_small_grid    <- data.frame(table(gps_per_small_grid$id))
 
 
 
-             
+# Now got a grid of polygons insisde the big polygons, the gps data, and the big emission polygons
+
+fifty_m_grid    <- st_join(fifty_m_grid, grid_emissions)
+
+### Right so every cell in the fifty_m_grid has the concentration from the larger grid as 'sailing' or 'berth'
+
+fifty_m_grid    <- fifty_m_grid %>% filter(!is.na(sailing) | !is.na(berth))
+
+
+
+## Need to now think about counint points per polygon
+
+gps_data        <- st_join(fifty_m_grid, gps_data)
+
+gps_data        <- gps_data %>% group_by(id) %>% summarise(count = length(pollutant))
