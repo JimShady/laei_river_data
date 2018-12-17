@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1544523312192.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "430908075",
+    "id" : "74064AC8",
+    "lastKnownWriteTime" : 1544786860,
+    "last_content_update" : 1544786860642,
+    "path" : "C:/Users/stwb3498/Documents/Github/laei_river_data/main_script.R",
+    "project_path" : "main_script.R",
+    "properties" : {
+        "cursorPosition" : "79,27",
+        "scrollLine" : "57",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
