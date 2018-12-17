@@ -16,8 +16,8 @@ library(mapview)
 ## 4. A shapefile of the grid exact cut
 
 latlong = "+init=epsg:4326"
-ukgrid = "+init=epsg:27700"
-google = "+init=epsg:3857"
+ukgrid  = "+init=epsg:27700"
+google  = "+init=epsg:3857"
 
 ## Import the ship classifications 
 vessel_class              <- read_csv('docs/vessel_classifications.csv')
@@ -65,38 +65,35 @@ grid_emissions            <- grid_emissions %>%
             berth   = sum(berth))
 
 grid_emissions$geom_group <- NULL
-grid_emissions$id  <- 1:nrow(grid_emissions) 
+grid_emissions$id         <- 1:nrow(grid_emissions) 
 
 
 ## Get GPS data 
 ## list GPS data
-list_of_gps_data <- list.files('gps/', full.names=T, pattern = 'Rdata')
+list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 
 #for (i in 1:length(list_of_gps_data)) {
 for (i in 1:5) {
   
-  print(list_of_gps_data[i])
+  print(paste0('starting ', list_of_gps_data[i]))
   
   load(list_of_gps_data[i])
   
-  gps_data                  <- data
+  gps_data                                <- data
   rm(data)
   
-  gps_data                  <- st_as_sf(gps_data, coords = c('lon', 'lat'), crs = 4326)
-  gps_data                  <- st_transform(gps_data, 27700)
-  gps_data                  <- gps_data[!is.na(gps_data$VESSEL_TYPE),]
-  
-  gps_data                  <- left_join(gps_data, vessel_class, by = c('VESSEL_TYPE' = 'code'))
-  
-  ## Remove data from GPS data that we don't need
-  gps_data                  <- gps_data[,c('group')]
+  gps_data                                <- st_as_sf(gps_data, coords = c('lon', 'lat'), crs = 4326) %>% 
+                                                  st_transform(27700) %>% 
+                                                  filter(!is.na(VESSEL_TYPE)) %>%
+                                                  left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
+                                                  select(group)
   
   # Count, over the year in total, how many GPS points there are in each large grid square
-  gps_per_grid_id                       <- st_join(gps_data, grid_emissions[,c('id')])
-  gps_per_grid_id                       <- data.frame(table(gps_per_grid_id$id))
-  names(gps_per_grid_id)                <- c('grid_id', 'total_daily_gps_count')
-  gps_per_grid_id$grid_id               <- as.integer(gps_per_grid_id$grid_id)
-  grid_emissions                        <- left_join(grid_emissions, gps_per_grid_id, by = c("id" = "grid_id"))
+  gps_per_grid_id                         <- st_join(gps_data, grid_emissions[,c('id')])
+  gps_per_grid_id                         <- data.frame(table(gps_per_grid_id$id))
+  names(gps_per_grid_id)                  <- c('grid_id', 'total_daily_gps_count')
+  gps_per_grid_id$grid_id                 <- as.integer(gps_per_grid_id$grid_id)
+  grid_emissions                          <- left_join(grid_emissions, gps_per_grid_id, by = c("id" = "grid_id"))
   
   if (i == 1) {
     grid_emissions$total_annual_gps_count <- grid_emissions$total_daily_gps_count
@@ -110,8 +107,10 @@ for (i in 1:5) {
   
   rm(gps_data)
   
+  print(paste0('ended ', list_of_gps_data[i]))
+  
 }
-                
+
 ## At this point code deals with counting all the GPS points inside the large squares but not small ones
 
 
