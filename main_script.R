@@ -67,29 +67,37 @@ grid_emissions            <- grid_emissions %>%
 grid_emissions$geom_group <- NULL
 grid_emissions$id         <- 1:nrow(grid_emissions) 
 
+## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the GPS data.
+
+unique_geoms                <- unique(grid_emissions[,'geom'])
+unique_geoms$unique_geom_id <- 1:nrow(unique_geoms) 
+grid_emissions              <- st_join(grid_emissions, unique_geoms, join = st_equals)
 
 ## Get GPS data 
 ## list GPS data
 list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 
-#for (i in 1:length(list_of_gps_data)) {
-for (i in 1:5) {
-  
-  print(paste0('starting ', list_of_gps_data[i]))
+## Calculate how many GPS points are within each large square (need that to do the proportions)
+## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
+
+for (i in 1:length(list_of_gps_data)) {
+
+  print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
   
   load(list_of_gps_data[i])
   
-  gps_data                                <- data
-  rm(data)
-  
-  gps_data                                <- st_as_sf(gps_data, coords = c('lon', 'lat'), crs = 4326) %>% 
+  gps_data                                <- st_as_sf(data, coords = c('lon', 'lat'), crs = 4326) %>% 
                                                   st_transform(27700) %>% 
+                                                  st_crop(st_bbox(unique_geoms)) %>%
                                                   filter(!is.na(VESSEL_TYPE)) %>%
                                                   left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
                                                   select(group)
   
+  rm(data)
+  
   # Count, over the year in total, how many GPS points there are in each large grid square
-  gps_per_grid_id                         <- st_join(gps_data, grid_emissions[,c('id')])
+  gps_per_grid_id                         <- st_join(gps_data, unique_geoms, join = st_intersects)
+  
   gps_per_grid_id                         <- data.frame(table(gps_per_grid_id$id))
   names(gps_per_grid_id)                  <- c('grid_id', 'total_daily_gps_count')
   gps_per_grid_id$grid_id                 <- as.integer(gps_per_grid_id$grid_id)
@@ -107,29 +115,44 @@ for (i in 1:5) {
   
   rm(gps_data)
   
-  print(paste0('ended ', list_of_gps_data[i]))
+  print(paste0('ended ', list_of_gps_data[i], ' at ', Sys.time()))
   
 }
 
 ## At this point code deals with counting all the GPS points inside the large squares but not small ones
-
-
-
-
-
-
-
-
-
-
-## So now make a grid of 50m polygons which are inside the larger polygons
+## So now make a grid of 100m polygons which are inside the larger polygons
 fifty_m_grid    <- st_make_grid(grid_emissions, cellsize = 100, what = 'polygons') %>% st_sf()
-
-# At this point need to count the GPS points instead my smaller polygons
 fifty_m_grid$id       <- 1:nrow(fifty_m_grid)
-gps_per_small_grid    <- st_join(gps_data, fifty_m_grid[,c('id')])
 
-gps_per_small_grid    <- data.frame(table(gps_per_small_grid$id))
+## Now going to need a loop again to import each GPS file, and count the numbers of points inside each polygon.
+
+for (i in 1:length(list_of_gps_data)) {
+  
+  print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
+  
+  load(list_of_gps_data[i])
+  
+  gps_data                                <- data[sample(1:nrow(data),1000),]
+  #gps_data                               <- data
+  
+  rm(data)
+  
+  gps_data                                <- st_as_sf(gps_data, coords = c('lon', 'lat'), crs = 4326) %>% 
+                                              st_transform(27700) %>% 
+                                              filter(!is.na(VESSEL_TYPE)) %>%
+                                              left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
+                                              select(group)
+  
+  gps_per_small_grid    <- st_join(gps_data, fifty_m_grid[,c('id')])
+  
+  gps_per_small_grid    <- data.frame(table(gps_per_small_grid$id))
+  
+}
+
+
+
+
+
 
 
 
