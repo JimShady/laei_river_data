@@ -77,6 +77,7 @@ grid_emissions              <- st_join(grid_emissions, unique_geoms, join = st_e
 ## list GPS data
 list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 
+
 ## Calculate how many GPS points are within each large square (need that to do the proportions)
 ## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
 
@@ -96,9 +97,10 @@ for (i in 1:length(list_of_gps_data)) {
   rm(data)
   
   # Count, over the year in total, how many GPS points there are in each large grid square
-  gps_per_grid_id                         <- st_join(gps_data, unique_geoms, join = st_intersects)
+  gps_per_grid_id                         <- st_join(gps_data, unique_geoms, join = st_intersects) %>% filter(!is.na(unique_geom_id))
   
   gps_per_grid_id                         <- data.frame(table(gps_per_grid_id$id))
+  
   names(gps_per_grid_id)                  <- c('grid_id', 'total_daily_gps_count')
   gps_per_grid_id$grid_id                 <- as.integer(gps_per_grid_id$grid_id)
   grid_emissions                          <- left_join(grid_emissions, gps_per_grid_id, by = c("id" = "grid_id"))
