@@ -72,8 +72,8 @@ grid_emissions$id         <- 1:nrow(grid_emissions)
 ## list GPS data
 list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 
-#for (i in 1:length(list_of_gps_data)) {
-for (i in 1:5) {
+for (i in 1:length(list_of_gps_data)) {
+#for (i in 1:5) {
   
   print(paste0('starting ', list_of_gps_data[i]))
   
