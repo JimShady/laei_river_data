@@ -4,6 +4,7 @@ library(sf)
 library(tidyverse)
 library(mapview)
 library(scales)
+library(viridis)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
@@ -109,7 +110,7 @@ list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 ## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
 
 #for (i in 1:length(list_of_gps_data)) {
-  for (i in 1:5) {
+  for (i in 1:3) {
 
   print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
   
@@ -190,14 +191,11 @@ list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
   }
   
   plot <-   ggplot() + 
-    geom_sf(data = the_thames, fill=NA, colour = 'grey') + 
-    geom_sf(data=unique_geoms_result, aes(fill = total_annual_gps_count),
+    geom_sf(data = the_thames, fill='blue', colour = NA) + 
+    geom_sf(data=unique_geoms_result[!is.na(unique_geoms_result$total_annual_gps_count),], aes(fill = total_annual_gps_count),
             colour=NA,
-            alpha = 0.5) + 
-    scale_fill_gradient2(low = "blue", mid = "darkgreen", high = "red",
-                         midpoint = median(unique_geoms_result$total_annual_gps_count,
-                                           na.rm=T), space = "Lab",
-                         na.value = NA, guide = "colourbar", aesthetics = "fill") +
+            alpha = 0.7) + 
+    scale_fill_viridis(option="magma") +
     facet_wrap(.~group, ncol = 2, labeller = as_labeller(facet_labels)) +
     theme(axis.ticks = element_blank(),
           axis.text  = element_blank(),
@@ -206,7 +204,7 @@ list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
           strip.text.x = element_text(size = 16),
           legend.position = 'none',
           plot.title = element_text(size = 24, face = "bold")) +
-    ggtitle(paste(substr(x = list_of_gps_data[i], start = 23, stop = nchar(list_of_gps_data[i])-6), 
+    ggtitle(paste0('Day ', i, 
                   ' - ',
                   points_counter,
                   'gps points processed'))
@@ -214,10 +212,13 @@ list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
   png(filename = paste0('animation_pics/', 
                         substr(x = list_of_gps_data[i], start = 23, stop = nchar(list_of_gps_data[i])-6),
                         '.png'), width = 30, height = 14, units = 'cm', res = 200)
-  plot
+  print(plot)
   dev.off()
   
   rm(gps_data)
+  
+  print(paste0('Total of ', sum(small_grid_result$total_annual_gps_count, na.rm=TRUE), ' in small grid'))
+  print(paste0('Total of ', sum(unique_geoms_result$total_annual_gps_count, na.rm=TRUE), ' in large grid'))
   
 }
 
