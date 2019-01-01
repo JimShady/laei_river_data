@@ -3,6 +3,7 @@ rm(list=ls(all=TRUE))
 library(sf)
 library(tidyverse)
 library(mapview)
+library(scales)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
@@ -18,6 +19,8 @@ library(mapview)
 latlong = "+init=epsg:4326"
 ukgrid  = "+init=epsg:27700"
 google  = "+init=epsg:3857"
+
+the_thames <- st_read('https://raw.githubusercontent.com/KCL-ERG/useful_geography/master/thames.geojson')
 
 ## Import the ship classifications 
 vessel_class              <- read_csv('docs/vessel_classifications.csv')
@@ -39,7 +42,8 @@ emissions[emissions$ship_type == 'Cruise ship','ship_type']          <-'Passenge
 emissions[emissions$ship_type == 'Passenger', 'ship_type']           <-'Passenger (ferry)'
 
 # Add vessel group type to the emissions, for matching with GPS data
-emissions                 <- left_join(emissions, unique(vessel_class[,c('aggregated_class', 'group')]), by = c('ship_type' = 'aggregated_class'))
+emissions                 <- left_join(emissions, unique(vessel_class[,c('aggregated_class', 'group')]),
+                                       by = c('ship_type' = 'aggregated_class'))
 
 # Now get the grid by exact cut
 grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
@@ -60,28 +64,52 @@ rm(emissions, grid)
 grid_emissions$geom_group <- sapply(st_equals(grid_emissions), max)
 
 grid_emissions            <- grid_emissions %>%
-  group_by(geom_group, pollutant, group) %>%
-  summarise(sailing = sum(sailing),
-            berth   = sum(berth))
+                              group_by(geom_group, pollutant, group) %>%
+                              summarise(sailing = sum(sailing),
+                              berth   = sum(berth))
 
 grid_emissions$geom_group <- NULL
 grid_emissions$id         <- 1:nrow(grid_emissions) 
 
-## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the GPS data.
+## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the
+## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
+## a left join look-up thing
 
 unique_geoms                <- unique(grid_emissions[,'geom'])
 unique_geoms$unique_geom_id <- 1:nrow(unique_geoms) 
 grid_emissions              <- st_join(grid_emissions, unique_geoms, join = st_equals)
 
+## Unique geoms results
+unique_geoms_result         <- rbind(unique_geoms %>% mutate(group = 1),
+                                     unique_geoms %>% mutate(group = 2),
+                                     unique_geoms %>% mutate(group = 3),
+                                     unique_geoms %>% mutate(group = 4))
+
+## Setup the small grids
+small_grid                     <- st_make_grid(unique_geoms, cellsize = 100, what = 'polygons') %>% st_sf()
+small_grid$small_grid_id       <- 1:nrow(small_grid) 
+small_grid$geometry_centroid   <- st_geometry(st_centroid(small_grid))
+small_grid                     <- st_set_geometry(small_grid, 'geometry_centroid')
+small_grid                     <- st_join(small_grid, unique_geoms, join = st_intersects) %>% 
+  filter(!is.na(unique_geom_id))
+small_grid                     <- st_set_geometry(small_grid, 'geometry')
+small_grid$geometry_centroid   <- NULL
+
+## small grid results
+small_grid_result         <- rbind(small_grid %>% mutate(group = 1),
+                                   small_grid %>% mutate(group = 2),
+                                   small_grid %>% mutate(group = 3),
+                                   small_grid %>% mutate(group = 4))
+
 ## Get GPS data 
 ## list GPS data
 list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 
-
 ## Calculate how many GPS points are within each large square (need that to do the proportions)
 ## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
 
-for (i in 1:length(list_of_gps_data)) {
+#for (i in 1:length(list_of_gps_data)) {
+  for (i in 1:5) {
 
   print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
   
@@ -97,79 +125,100 @@ for (i in 1:length(list_of_gps_data)) {
   rm(data)
   
   # Count, over the year in total, how many GPS points there are in each large grid square
-  gps_per_grid_id                         <- st_join(gps_data, unique_geoms, join = st_intersects) %>% filter(!is.na(unique_geom_id))
+  gps_per_grid_id                         <- st_join(gps_data, unique_geoms, join = st_intersects) %>% 
+                                             filter(!is.na(unique_geom_id))
   
-  gps_per_grid_id                         <- data.frame(table(gps_per_grid_id$id))
+  gps_per_small_grid_id                   <- st_join(gps_data, small_grid, join = st_intersects) %>% 
+                                              filter(!is.na(unique_geom_id))
   
-  names(gps_per_grid_id)                  <- c('grid_id', 'total_daily_gps_count')
-  gps_per_grid_id$grid_id                 <- as.integer(gps_per_grid_id$grid_id)
-  grid_emissions                          <- left_join(grid_emissions, gps_per_grid_id, by = c("id" = "grid_id"))
+  # Remove geoms we don't need from this count
+  gps_per_grid_id$geometry                <- NULL
+  gps_per_small_grid_id$geometry          <- NULL
+  
+  # Sum up by the grid square
+  gps_per_grid_id                         <- gps_per_grid_id %>%
+                                              group_by(unique_geom_id, group) %>%
+                                              summarise(count = length(group))
+  
+  gps_per_small_grid_id                   <- gps_per_small_grid_id %>% 
+                                              group_by(small_grid_id, group) %>%
+                                              summarise(count = length(group))
+  
+  # Add them to the result data                                              
+  unique_geoms_result                     <- left_join(unique_geoms_result, gps_per_grid_id,
+                                                       by = c("unique_geom_id" = "unique_geom_id",
+                                                              "group" = "group"))
+  
+  small_grid_result             <- left_join(small_grid_result, gps_per_small_grid_id,
+                                             by = c("small_grid_id" = "small_grid_id",
+                                                    "group" = "group"))
+  
+  # Depending on if it's the first time or not
   
   if (i == 1) {
-    grid_emissions$total_annual_gps_count <- grid_emissions$total_daily_gps_count
-    grid_emissions$total_daily_gps_count  <- NULL
+    
+    unique_geoms_result$total_annual_gps_count <- unique_geoms_result$count
+    unique_geoms_result$count                  <- NULL
     rm(gps_per_grid_id)
+    
+    small_grid_result$total_annual_gps_count <- small_grid_result$count
+    small_grid_result$count                  <- NULL
+    rm(gps_per_small_grid_id)
+    
   } else {
-    grid_emissions$total_annual_gps_count <- grid_emissions$total_annual_gps_count + grid_emissions$total_daily_gps_count
-    grid_emissions$total_daily_gps_count  <- NULL
-    rm(gps_per_grid_id)   
+    
+    unique_geoms_result$total_annual_gps_count <- unique_geoms_result$total_annual_gps_count + unique_geoms_result$count
+    unique_geoms_result$count                  <- NULL
+    rm(gps_per_grid_id) 
+    
+    small_grid_result$total_annual_gps_count <- small_grid_result$total_annual_gps_count + small_grid_result$count
+    small_grid_result$count                  <- NULL
+    rm(gps_per_small_grid_id)
+    
   }
   
-  rm(gps_data)
   
   print(paste0('ended ', list_of_gps_data[i], ' at ', Sys.time()))
   
+  facet_labels <- c('1' = 'Group One',
+                    '2' = 'Group Two',
+                    '3' = 'Group Three',
+                    '4' = 'Group Four')
+  
+  if (i == 1) {points_counter <- nrow(gps_data) } else {
+    points_counter <- points_counter + nrow(gps_data)
+  }
+  
+  plot <-   ggplot() + 
+    geom_sf(data = the_thames, fill=NA, colour = 'grey') + 
+    geom_sf(data=unique_geoms_result, aes(fill = total_annual_gps_count),
+            colour=NA,
+            alpha = 0.5) + 
+    scale_fill_gradient2(low = "blue", mid = "darkgreen", high = "red",
+                         midpoint = median(unique_geoms_result$total_annual_gps_count,
+                                           na.rm=T), space = "Lab",
+                         na.value = NA, guide = "colourbar", aesthetics = "fill") +
+    facet_wrap(.~group, ncol = 2, labeller = as_labeller(facet_labels)) +
+    theme(axis.ticks = element_blank(),
+          axis.text  = element_blank(),
+          panel.background = element_blank(),
+          strip.background = element_blank(),
+          strip.text.x = element_text(size = 16),
+          legend.position = 'none',
+          plot.title = element_text(size = 24, face = "bold")) +
+    ggtitle(paste(substr(x = list_of_gps_data[i], start = 23, stop = nchar(list_of_gps_data[i])-6), 
+                  ' - ',
+                  points_counter,
+                  'gps points processed'))
+  
+  png(filename = paste0('animation_pics/', 
+                        substr(x = list_of_gps_data[i], start = 23, stop = nchar(list_of_gps_data[i])-6),
+                        '.png'), width = 30, height = 14, units = 'cm', res = 200)
+  plot
+  dev.off()
+  
+  rm(gps_data)
+  
 }
 
-## At this point code deals with counting all the GPS points inside the large squares but not small ones
-## So now make a grid of 100m polygons which are inside the larger polygons
-fifty_m_grid    <- st_make_grid(grid_emissions, cellsize = 100, what = 'polygons') %>% st_sf()
-fifty_m_grid$id       <- 1:nrow(fifty_m_grid)
-
-## Now going to need a loop again to import each GPS file, and count the numbers of points inside each polygon.
-
-for (i in 1:length(list_of_gps_data)) {
-  
-  print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
-  
-  load(list_of_gps_data[i])
-  
-  gps_data                                <- data[sample(1:nrow(data),1000),]
-  #gps_data                               <- data
-  
-  rm(data)
-  
-  gps_data                                <- st_as_sf(gps_data, coords = c('lon', 'lat'), crs = 4326) %>% 
-                                              st_transform(27700) %>% 
-                                              filter(!is.na(VESSEL_TYPE)) %>%
-                                              left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
-                                              select(group)
-  
-  gps_per_small_grid    <- st_join(gps_data, fifty_m_grid[,c('id')])
-  
-  gps_per_small_grid    <- data.frame(table(gps_per_small_grid$id))
-  
-}
-
-
-
-
-
-
-
-
-# Now got a grid of polygons insisde the big polygons, the gps data, and the big emission polygons
-
-fifty_m_grid    <- st_join(fifty_m_grid, grid_emissions)
-
-### Right so every cell in the fifty_m_grid has the concentration from the larger grid as 'sailing' or 'berth'
-
-fifty_m_grid    <- fifty_m_grid %>% filter(!is.na(sailing) | !is.na(berth))
-
-
-
-## Need to now think about counint points per polygon
-
-gps_data        <- st_join(fifty_m_grid, gps_data)
-
-gps_data        <- gps_data %>% group_by(id) %>% summarise(count = length(pollutant))
+#############
