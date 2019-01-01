@@ -218,7 +218,9 @@ list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
   rm(gps_data)
   
   print(paste0('Total of ', sum(small_grid_result$total_annual_gps_count, na.rm=TRUE), ' in small grid'))
+  save(small_grid_result, file = 'small_grid_result.Rdata')
   print(paste0('Total of ', sum(unique_geoms_result$total_annual_gps_count, na.rm=TRUE), ' in large grid'))
+  save(unique_geoms_result, file = 'unique_geoms_result.Rdata')
   
 }
 
