@@ -109,8 +109,8 @@ list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
 ## Calculate how many GPS points are within each large square (need that to do the proportions)
 ## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
 
-#for (i in 1:length(list_of_gps_data)) {
-  for (i in 1:3) {
+for (i in 1:length(list_of_gps_data)) {
+#  for (i in 1:3) {
 
   print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
   
