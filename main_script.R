@@ -5,6 +5,7 @@ library(tidyverse)
 library(mapview)
 library(scales)
 library(viridis)
+library(gridExtra)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
@@ -104,17 +105,29 @@ small_grid_result         <- rbind(small_grid %>% mutate(group = 1),
 
 ## Get GPS data 
 ## list GPS data
-list_of_gps_data          <- list.files('gps/', full.names=T, pattern = 'Rdata')
+list_of_gps_data             <- list.files('gps/', full.names=T, pattern = 'Rdata')
+
+list_of_gps_data             <- data.frame(filename    = list_of_gps_data,
+                                        actual_date = NA,
+                                        stringsAsFactors = F)
+
+list_of_gps_data$actual_date <- substr(x = list_of_gps_data$filename,
+                                       start = 23,
+                                       stop = nchar(list_of_gps_data$filename)-6)
+
+list_of_gps_data$actual_date <- as.Date(list_of_gps_data$actual_date, format = '%d_%b_%Y')
+
+list_of_gps_data             <- list_of_gps_data[order(list_of_gps_data$actual_date),]
 
 ## Calculate how many GPS points are within each large square (need that to do the proportions)
 ## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
 
-for (i in 1:length(list_of_gps_data)) {
-#  for (i in 1:3) {
+#for (i in 1:nrow(list_of_gps_data)) {
+for (i in 1:3) {
 
-  print(paste0('starting ', list_of_gps_data[i], ' at ', Sys.time()))
+  print(paste0('starting ', list_of_gps_data[i,]$actual_date, ' at ', Sys.time()))
   
-  load(list_of_gps_data[i])
+  load(list_of_gps_data[i,]$filename)
   
   gps_data                                <- st_as_sf(data, coords = c('lon', 'lat'), crs = 4326) %>% 
                                                   st_transform(27700) %>% 
@@ -163,7 +176,7 @@ for (i in 1:length(list_of_gps_data)) {
     rm(gps_per_grid_id)
     
     small_grid_result$total_annual_gps_count <- small_grid_result$count
-    small_grid_result$count                  <- NULL
+    #small_grid_result$count                  <- NULL
     rm(gps_per_small_grid_id)
     
   } else {
@@ -173,13 +186,13 @@ for (i in 1:length(list_of_gps_data)) {
     rm(gps_per_grid_id) 
     
     small_grid_result$total_annual_gps_count <- small_grid_result$total_annual_gps_count + small_grid_result$count
-    small_grid_result$count                  <- NULL
+    #small_grid_result$count                  <- NULL
     rm(gps_per_small_grid_id)
     
   }
   
   
-  print(paste0('ended ', list_of_gps_data[i], ' at ', Sys.time()))
+  print(paste0('ended ', list_of_gps_data[i,]$actual_date, ' at ', Sys.time()))
   
   facet_labels <- c('1' = 'Group One',
                     '2' = 'Group Two',
@@ -190,36 +203,34 @@ for (i in 1:length(list_of_gps_data)) {
     points_counter <- points_counter + nrow(gps_data)
   }
   
-  plot <-   ggplot() + 
-    geom_sf(data = the_thames, fill='blue', colour = NA) + 
-    geom_sf(data=unique_geoms_result[!is.na(unique_geoms_result$total_annual_gps_count),], aes(fill = total_annual_gps_count),
-            colour=NA,
-            alpha = 0.7) + 
-    scale_fill_viridis(option="magma") +
-    facet_wrap(.~group, ncol = 2, labeller = as_labeller(facet_labels)) +
+  plot <- ggplot() + 
+    geom_sf(data = the_thames, fill='grey', colour = NA, alpha=0.2) +
+    geom_sf(data=filter(small_grid_result, !is.na(count)), aes(fill = as.factor(group)), colour=NA) +
+    facet_wrap(.~group, ncol = 1, labeller = as_labeller(facet_labels)) +
     theme(axis.ticks = element_blank(),
           axis.text  = element_blank(),
           panel.background = element_blank(),
           strip.background = element_blank(),
           strip.text.x = element_text(size = 16),
           legend.position = 'none',
-          plot.title = element_text(size = 24, face = "bold")) +
+          plot.title = element_text(size = 16, face = "bold", hjust=0.5)) +
     ggtitle(paste0('Day ', i, 
                   ' - ',
-                  points_counter,
-                  'gps points processed'))
+                  nrow(gps_data),
+                  ' GPS points')) +
+    xlab(paste0('Total points processed = ', points_counter))
   
   png(filename = paste0('animation_pics/', 
-                        substr(x = list_of_gps_data[i], start = 23, stop = nchar(list_of_gps_data[i])-6),
-                        '.png'), width = 30, height = 14, units = 'cm', res = 200)
+                        list_of_gps_data[i,]$actual_date,
+                        '.png'), width = 14, height = 20, units = 'cm', res = 200)
   print(plot)
   dev.off()
   
+  small_grid_result$count                  <- NULL
+  
   rm(gps_data)
   
-  print(paste0('Total of ', sum(small_grid_result$total_annual_gps_count, na.rm=TRUE), ' in small grid'))
   save(small_grid_result, file = 'small_grid_result.Rdata')
-  print(paste0('Total of ', sum(unique_geoms_result$total_annual_gps_count, na.rm=TRUE), ' in large grid'))
   save(unique_geoms_result, file = 'unique_geoms_result.Rdata')
   
 }
