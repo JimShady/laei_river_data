@@ -122,8 +122,7 @@ list_of_gps_data             <- list_of_gps_data[order(list_of_gps_data$actual_d
 ## Calculate how many GPS points are within each large square (need that to do the proportions)
 ## Needs editing so that does it by 'group'. Might want to look at st_equals_exact
 
-#for (i in 1:nrow(list_of_gps_data)) {
-for (i in 1:3) {
+for (i in 1:nrow(list_of_gps_data)) {
 
   print(paste0('starting ', list_of_gps_data[i,]$actual_date, ' at ', Sys.time()))
   
