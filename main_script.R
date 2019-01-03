@@ -208,12 +208,13 @@ for (i in 1:nrow(list_of_gps_data)) {
     facet_wrap(.~group, ncol = 1, labeller = as_labeller(facet_labels)) +
     theme(axis.ticks = element_blank(),
           axis.text  = element_blank(),
+          axis.title.x = element_text(size = 16, face = "bold", hjust=0),
           panel.background = element_blank(),
           strip.background = element_blank(),
           strip.text.x = element_text(size = 16),
           legend.position = 'none',
-          plot.title = element_text(size = 16, face = "bold", hjust=0.5)) +
-    ggtitle(paste0('Day ', i, 
+          plot.title = element_text(size = 16, face = "bold", hjust=0)) +
+    ggtitle(paste0(list_of_gps_data[i,]$actual_date, 
                   ' - ',
                   nrow(gps_data),
                   ' GPS points')) +
