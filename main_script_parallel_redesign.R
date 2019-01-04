@@ -2,11 +2,8 @@ rm(list=ls(all=TRUE))
 
 library(sf)
 library(tidyverse)
-library(mapview)
 library(scales)
-library(viridis)
-library(gridExtra)
-library(snow)
+library(snowfall)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
@@ -159,14 +156,97 @@ process_gps_data <-  function(x) {
                                                 summarise(count = length(group))
   
   save(gps_per_large_grid_id, file = paste0('grids/large_result_', substr(x = x,
-                                            start = 23,
+                                            start = 24,
                                             stop = nchar(x)-6), '.Rdata'))
   
   save(gps_per_small_grid_id, file = paste0('grids/small_result_', substr(x = x,
-                                                   start = 23,
+                                                   start = 24,
                                                    stop = nchar(x)-6), '.Rdata'))
   
+  rm(gps_per_large_grid_id, gps_per_large_grid_id)
   
 }
-  
- 
+
+# Set-up parallel and fun above function
+sfInit(parallel=TRUE, cpus=parallel:::detectCores()-1)
+sfLibrary(sf)
+sfLibrary(tidyverse)
+sfExport(list=list("unique_geoms", "small_grid", "vessel_class"))
+sfLapply(list_of_gps_data, fun=process_gps_data)
+
+rm(process_gps_data, list_of_gps_data)
+
+## Got results for each day in individual data frames. Need to join and aggregate them.
+
+list_of_small_grid_gps_result_data             <- list.files('grids/', full.names=T, pattern = 'small')
+list_of_large_grid_gps_result_data             <- list.files('grids/', full.names=T, pattern = 'large')
+
+for (i in 1:length(list_of_large_grid_gps_result_data)) {
+  load(list_of_large_grid_gps_result_data[i])
+  load(list_of_small_grid_gps_result_data[i])
+if (i == 1) {
+  gps_per_large_grid_bind <- gps_per_large_grid_id
+  gps_per_small_grid_bind <- gps_per_small_grid_id
+} else {
+  gps_per_large_grid_bind <- bind_rows(gps_per_large_grid_bind,gps_per_large_grid_id)
+  gps_per_small_grid_bind <- bind_rows(gps_per_small_grid_bind,gps_per_small_grid_id)
+}
+}
+rm(list_of_large_grid_gps_result_data, list_of_small_grid_gps_result_data, gps_per_large_grid_id, gps_per_small_grid_id, i, small_grid, unique_geoms)
+
+gps_per_large_grid  <- gps_per_large_grid_bind %>%
+                          group_by(unique_geom_id, group) %>%
+                          summarise(count = sum(count))
+rm(gps_per_large_grid_bind)
+
+gps_per_small_grid <- gps_per_small_grid_bind %>%
+                          group_by(small_grid_id, group) %>%
+                          summarise(count = sum(count))
+rm(gps_per_small_grid_bind)
+
+## Now need to join to the result grids I made
+small_grid_result  <- small_grid_result %>%
+                          left_join(gps_per_small_grid, by = c("small_grid_id" = "small_grid_id", "group" = "group"))
+rm(gps_per_small_grid)
+
+## Now need to join to the result grids I made
+unique_geoms_result  <- unique_geoms_result %>%
+                          left_join(gps_per_large_grid, by = c("unique_geom_id" = "unique_geom_id", "group" = "group"))
+rm(gps_per_large_grid)
+
+unique_geoms_result$geom <- NULL
+
+gps_result           <- left_join(small_grid_result, unique_geoms_result, by = c("group" = "group", "unique_geom_id" = "unique_geom_id"),
+                                    suffix = c("_small", "_large"))
+
+rm(small_grid_result, unique_geoms_result)
+
+## Join to the emissions. Got to dupliate for each pollutant
+gps_result         <- rbind(gps_result %>% mutate(pollutant = 'NOx'),
+                            gps_result %>% mutate(pollutant = 'PM'),
+                            gps_result %>% mutate(pollutant = 'PM2.5'))
+
+grid_emissions$geom   <- NULL
+
+gps_result        <-  left_join(gps_result, grid_emissions, by = c("unique_geom_id" = "unique_geom_id",
+                                                                   "group" = "group",
+                                                                   "pollutant" = "pollutant"))
+
+rm(grid_emissions)
+
+gps_result <- filter(gps_result, !is.na(count_small))
+
+gps_result$sailing_emissions <- (gps_result$count_small / gps_result$count_large) * gps_result$sailing
+
+# PM2.5 emissions
+ggplot() + 
+  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 1), aes(fill = sailing_emissions), colour=NA)
+
+ggplot() + 
+  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 2), aes(fill = sailing_emissions), colour=NA)
+
+ggplot() + 
+  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 3), aes(fill = sailing_emissions), colour=NA)
+
+ggplot() +
+  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 4), aes(fill = sailing_emissions), colour=NA)
