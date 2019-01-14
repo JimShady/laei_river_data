@@ -1,7 +1,7 @@
 # Method summary
 
 ## Emissions
-PLA 2016 emissions covering London are imported as a [CSV](https://github.com/JimShady/laei_river_data/blob/master/emissions/inventory_export_2016.csv). These contain for each pollutant, ship type and cellid (LAEI exact cut) the estimated shipping emissions in kg per annum for that area. There are 12 ship types in the inventory, however these are grouped by [vessel class](https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) (also provided by PLA) to 4 types. Henceforth known as `Group 1`, `Group 2`, `Group 3` and `Group 4`. This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
+PLA 2016 emissions covering London are imported as a [CSV](https://github.com/JimShady/laei_river_data/blob/master/emissions/inventory_export_2016.csv). These contain for each pollutant, ship type and cellid (LAEI exact cut) the estimated shipping emissions in kg per annum for that area (approx. 1km x 1km). There are 12 ship types in the inventory, however these are grouped by [vessel class](https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) (also provided by PLA) to 4 types. Henceforth known as `Group 1`, `Group 2`, `Group 3` and `Group 4`. This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
 
 ```r
 Simple feature collection with 12 features and 6 fields
@@ -92,6 +92,11 @@ First 10 features:
 
 ![Map of small grid](https://github.com/JimShady/laei_river_data/blob/master/maps/small_grid_gps_count.png)
 
+## Berths
+The PLA 2016 emissions are split between `sailing` and `berth`. The berth emissions will be distributed to the berths that are within each `cellid`, weighted by the number of GPS points within the `small_grid` cell of the berth. A shapefile of berths was therefore imported, and joined to the small grid, adding an extra column to identify if that small_grid cell held a berth or not. The result of this is shown below as data and a map.
+
+
+
 ## Distributing emissions
-The
+
 
