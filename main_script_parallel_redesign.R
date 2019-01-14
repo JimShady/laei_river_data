@@ -83,10 +83,10 @@ unique_geoms$unique_geom_id        <- 1:nrow(unique_geoms)
 grid_emissions                     <- st_join(grid_emissions, unique_geoms, join = st_equals)
 
 ## Unique geoms results
-unique_geoms_result                <- rbind(unique_geoms %>% mutate(group = 1),
-                                      unique_geoms %>% mutate(group = 2),
-                                      unique_geoms %>% mutate(group = 3),
-                                      unique_geoms %>% mutate(group = 4))
+#unique_geoms_result                <- rbind(unique_geoms %>% mutate(group = 1),
+#                                      unique_geoms %>% mutate(group = 2),
+#                                      unique_geoms %>% mutate(group = 3),
+#                                      unique_geoms %>% mutate(group = 4))
 
 ## Setup the small grids
 small_grid                         <- st_make_grid(unique_geoms, cellsize = 20, what = 'polygons') %>% st_sf()
