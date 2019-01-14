@@ -8,7 +8,7 @@ PLA 2016 emissions covering London are imported as a [CSV](https://github.com/Ji
 ## The 20m grid
 A 20m x 20m polygon grid (`small_grid`) covering the extent of the emission grid was now created. This was then intersected with a unique geographical representation of the emissions grid i.e. just one cell for each area, rather than twelve cslls (3 pollutants x 4 groups). A `unique_geom_id` column was added to the `small_grid`, to enable linking of the 'small_grid' back to the original emissions.
 
-PICTURE OF ZOOMED-IN AREA OF LONDON WITH SMALL GRID ON IT
+![Map of small grid](https://github.com/JimShady/laei_river_data/blob/master/maps/small_grid.png)
 
 
 
