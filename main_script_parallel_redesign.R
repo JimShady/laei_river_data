@@ -78,51 +78,21 @@ grid_emissions$id         <- 1:nrow(grid_emissions)
 ## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
 ## a left join look-up thing
 
-unique_geoms                <- unique(grid_emissions[,'geom'])
-unique_geoms$unique_geom_id <- 1:nrow(unique_geoms) 
-grid_emissions              <- st_join(grid_emissions, unique_geoms, join = st_equals)
+unique_geoms                       <- unique(grid_emissions[,'geom'])
+unique_geoms$unique_geom_id        <- 1:nrow(unique_geoms) 
+grid_emissions                     <- st_join(grid_emissions, unique_geoms, join = st_equals)
 
 ## Unique geoms results
-unique_geoms_result         <- rbind(unique_geoms %>% mutate(group = 1),
-                                     unique_geoms %>% mutate(group = 2),
-                                     unique_geoms %>% mutate(group = 3),
-                                     unique_geoms %>% mutate(group = 4))
+unique_geoms_result                <- rbind(unique_geoms %>% mutate(group = 1),
+                                      unique_geoms %>% mutate(group = 2),
+                                      unique_geoms %>% mutate(group = 3),
+                                      unique_geoms %>% mutate(group = 4))
 
 ## Setup the small grids
-small_grid                     <- st_make_grid(unique_geoms, cellsize = 20, what = 'polygons') %>% st_sf()
-small_grid$small_grid_id       <- 1:nrow(small_grid) 
+small_grid                         <- st_make_grid(unique_geoms, cellsize = 20, what = 'polygons') %>% st_sf()
 
-
-small_grid                     <- st_join(small_grid, unique_geoms, join = st_intersects, left = TRUE) %>% 
-                                    filter(!is.na(unique_geom_id))
-
-## The small grids that are on boundaries need cutting.
-small_grid$old_area            <- st_area(small_grid)
-
-problems                       <- data.frame(table(small_grid$small_grid_id)) %>% 
-                                   as.tibble()  %>%
-                                   filter(Freq > 1)  %>%
-                                   mutate(small_grid_id = Var1, count = Freq)
-
-problems                       <- filter(small_grid, small_grid_id %in% problems$small_grid_id)
-
-unique_large_grids             <- unique(problems$unique_geom_id)
-
-for (i in 1:length(unique_large_grids)) {
-  
-  st_geometry(problems[problems$unique_geom_id == unique_large_grids[i],]) <- st_intersection(st_geometry(problems[problems$unique_geom_id == unique_large_grids[i],]), 
-                                                                                  st_geometry(unique_geoms[unique_geoms$unique_geom_id == unique_large_grids[i],]))
-  print(i)
-}
-
-small_grid <-  filter(small_grid, !small_grid_id %in% problems$small_grid_id) %>%
-                rbind(problems)
-
-rm(problems, i, unique_large_grids)
-
-small_grid$new_area <- st_area(small_grid)
-
-small_grid$small_grid_id_exact_cut <- 1:nrow(small_grid)
+small_grid                         <- st_intersection(small_grid, unique_geoms)
+small_grid$small_grid_id           <- 1:nrow(small_grid) 
 
 ## Make a small  grid results dataset that we'll count the GPS points into
 small_grid_result         <- rbind(small_grid %>% mutate(group = 1),
@@ -163,38 +133,25 @@ process_gps_data <-  function(x) {
   
   rm(data)
   
-  # Count, over the year in total, how many GPS points there are in each large grid square
-  gps_per_large_grid_id                   <- st_join(gps_data, unique_geoms, join = st_intersects) %>% 
-                                                filter(!is.na(unique_geom_id))
-  
+  # Count, over the year in total, how many GPS points there are in each small grid square
+
   gps_per_small_grid_id                   <- st_join(gps_data, small_grid, join = st_intersects) %>% 
                                                 filter(!is.na(small_grid_id))
   
   # Remove geoms we don't need from this count
-  gps_per_large_grid_id$geometry          <- NULL
   gps_per_small_grid_id$geometry          <- NULL
-  gps_per_small_grid_id$old_area          <- NULL
-  gps_per_small_grid_id$new_area          <- NULL
-  
+
   # Sum up by the grid square
-  gps_per_large_grid_id                  <- gps_per_large_grid_id %>%
-                                                group_by(unique_geom_id, group) %>%
-                                                summarise(count = length(group))
-  
   gps_per_small_grid_id                   <- gps_per_small_grid_id %>% 
-                                                select(group, small_grid_id_exact_cut) %>%
-                                                group_by(small_grid_id_exact_cut, group) %>%
+                                                select(group, small_grid_id) %>%
+                                                group_by(small_grid_id, group) %>%
                                                 summarise(count = length(group))
-  
-  save(gps_per_large_grid_id, file = paste0('grids/large_result_', substr(x = x,
-                                            start = 24,
-                                            stop = nchar(x)-6), '.Rdata'))
   
   save(gps_per_small_grid_id, file = paste0('grids/small_result_', substr(x = x,
                                                    start = 24,
                                                    stop = nchar(x)-6), '.Rdata'))
   
-  rm(gps_per_large_grid_id, gps_per_small_grid_id)
+  rm(gps_per_small_grid_id)
   
 }
 
@@ -210,80 +167,74 @@ rm(process_gps_data, list_of_gps_data)
 ## Got results for each day in individual data frames. Read them all in, and combine into one data frame
 
 list_of_small_grid_gps_result_data             <- list.files('grids/', full.names=T, pattern = 'small')
-list_of_large_grid_gps_result_data             <- list.files('grids/', full.names=T, pattern = 'large')
 
-for (i in 1:length(list_of_large_grid_gps_result_data)) {
-  load(list_of_large_grid_gps_result_data[i])
+for (i in 1:length(list_of_small_grid_gps_result_data)) {
   load(list_of_small_grid_gps_result_data[i])
 if (i == 1) {
-  gps_per_large_grid_bind <- gps_per_large_grid_id
   gps_per_small_grid_bind <- gps_per_small_grid_id
 } else {
-  gps_per_large_grid_bind <- bind_rows(gps_per_large_grid_bind,gps_per_large_grid_id)
   gps_per_small_grid_bind <- bind_rows(gps_per_small_grid_bind,gps_per_small_grid_id)
 }
 }
 
 # remove some stuff we don't need anymore
-rm(list_of_large_grid_gps_result_data, list_of_small_grid_gps_result_data, gps_per_large_grid_id, gps_per_small_grid_id, i, small_grid, unique_geoms)
-
-# as we're doing annual average, don't care which day the GPS points were on, so group them all by large grid square id
-gps_per_large_grid  <- gps_per_large_grid_bind %>%
-                          group_by(unique_geom_id, group) %>%
-                          summarise(count = sum(count))
-rm(gps_per_large_grid_bind)
+rm(list_of_small_grid_gps_result_data, gps_per_small_grid_id, i, small_grid, unique_geoms)
 
 # And do the same for the small exact cut grids
-gps_per_small_grid <- gps_per_small_grid_bind %>%
-                          group_by(small_grid_id_exact_cut, group) %>% 
-                          summarise(count = sum(count))
+gps_per_small_grid        <- gps_per_small_grid_bind %>%
+                              group_by(small_grid_id, group) %>% 
+                              summarise(count = sum(count))
 rm(gps_per_small_grid_bind)
 
+
+
 ## Now need to join to the result grids I made
-small_grid_result  <- small_grid_result %>%
-                          left_join(gps_per_small_grid, by = c("small_grid_id_exact_cut" = "small_grid_id_exact_cut", "group" = "group"))
+small_grid_result         <- small_grid_result %>%
+                              left_join(gps_per_small_grid, by = c("small_grid_id" = "small_grid_id",
+                                                                   "group" = "group"))
 rm(gps_per_small_grid)
 
-## Now need to join to the result grids I made
-unique_geoms_result  <- unique_geoms_result %>%
-                          left_join(gps_per_large_grid, by = c("unique_geom_id" = "unique_geom_id", "group" = "group"))
-rm(gps_per_large_grid)
+# Need to do something about the berths now.
+#Maybe need to buffer berths to intersect with more small grid squares
 
-unique_geoms_result$geom <- NULL
-# I'm here
-gps_result           <- left_join(small_grid_result, unique_geoms_result, by = c("group" = "group", "unique_geom_id" = "unique_geom_id"),
-                                    suffix = c("_small", "_large"))
+berths <- st_read('shapefiles/Berths.shp') %>% select(berth_name) %>% st_set_crs(27700)
 
-rm(small_grid_result, unique_geoms_result)
+small_grid_result <- small_grid_result %>% 
+  st_join(berths, join = st_intersects, left = TRUE)
+
+small_grid_result$berth_name <- as.character(small_grid_result$berth_name)
+
+##
+large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + unique_geom_id, FUN=sum)
+large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & !is.na(small_grid_result$berth_name),], count ~ group + unique_geom_id, FUN=sum)
+
+names(large_grid_sailing_counts)[3] <- 'sailing_count'
+names(large_grid_berth_counts)[3]   <- 'berth_count'
+
+small_grid_result <- small_grid_result %>% rename(small_grid_count = count) %>% 
+                                          left_join(large_grid_sailing_counts, by = c("unique_geom_id" = "unique_geom_id",
+                                                                                      "group" = "group")) %>%
+                                          left_join(large_grid_berth_counts,   by = c("unique_geom_id" = "unique_geom_id",
+                                                                                      "group" = "group"))
+
+rm(large_grid_sailing_counts, large_grid_berth_counts)
 
 ## Join to the emissions. Got to duplicate for each pollutant
-gps_result         <- rbind(gps_result %>% mutate(pollutant = 'NOx'),
-                            gps_result %>% mutate(pollutant = 'PM'),
-                            gps_result %>% mutate(pollutant = 'PM2.5'))
+small_grid_result         <- rbind(small_grid_result %>% mutate(pollutant = 'NOx'),
+                                   small_grid_result %>% mutate(pollutant = 'PM'),
+                                   small_grid_result %>% mutate(pollutant = 'PM2.5'))
 
-grid_emissions$geom   <- NULL
+## Ad up the GPS points into large grid IDs
 
-gps_result        <-  left_join(gps_result, grid_emissions, by = c("unique_geom_id" = "unique_geom_id",
-                                                                   "group" = "group",
-                                                                   "pollutant" = "pollutant"))
+grid_emissions$geom       <- NULL
 
-rm(grid_emissions)
+small_grid_result         <-  left_join(small_grid_result, grid_emissions, by = c("unique_geom_id" = "unique_geom_id",
+                                                                                 "group" = "group",
+                                                                                 "pollutant" = "pollutant"))
 
-gps_result <- filter(gps_result, !is.na(count_small))
+rm(grid_emissions, unique_geoms_result)
 
-## AT THIS POINT NEED TO FIGURE OUT THE BERTS THING.
+## AT THIS POINT NEED TO FIGURE OUT THE BERTHS THING.
 
-gps_result$sailing_emissions <- (gps_result$count_small / gps_result$count_large) * gps_result$sailing
+small_grid_result$sailing_emissions <- (small_grid_result$small_grid_count / small_grid_result$sailing_count) * small_grid_result$sailing
 
-# PM2.5 emissions
-ggplot() + 
-  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 1), aes(fill = sailing_emissions), colour=NA)
-
-ggplot() + 
-  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 2), aes(fill = sailing_emissions), colour=NA)
-
-ggplot() + 
-  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 3), aes(fill = sailing_emissions), colour=NA)
-
-ggplot() +
-  geom_sf(data=filter(gps_result, pollutant == 'PM2.5' & group == 4), aes(fill = sailing_emissions), colour=NA)
