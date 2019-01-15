@@ -156,8 +156,12 @@ The small_grid was now duplicated 3 times, a pollutant column added to each and 
 ### Group 4 NOx
 ![Map of PLA berths](https://github.com/JimShady/laei_river_data/blob/master/maps/emissions_nox_group_4.png)
 
-## Large grids with no GPS data
-Now have a problem though, as there are 1km by 1km emission grid areas from the PLA, with emissions for sailing/berth, where there is no GPS data. So the small grid squares in those areas have a `contribution` of 0 and can't distribute the emissions. For example `unique_geom_id` area 11 has the below emissions.
+## Problems
+
+### 1km by 1km grids with emissions but no GPS points
+
+Now have a problem though, as there are 1km by 1km emission grid areas from the PLA, with emissions for sailing/berth, where there is no GPS data. So the small grid squares in those areas have a `contribution` of 0 and can't distribute the emissions. For example 
+`unique_geom_id` area 11 has the below emissions.
 
 ```r
 Simple feature collection with 3 features and 6 fields
@@ -196,5 +200,9 @@ First 10 features:
 ```
 ![No GPS issue](https://github.com/JimShady/laei_river_data/blob/master/maps/no_gps_issue.png)
 
-There are other areas like this. MAKE MAP.
+On further inspection it seems that there might be some missclassifcation happening, as in this case there are only emissions for groups 2 and 3. But only GPS for groups 3 and 4. Have some of the GPS points been classified as 3 or 4, when they should have been classified as 2?
+
+### 1km by 1km grids with GPS points but no emissions
+
+
 
