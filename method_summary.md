@@ -162,7 +162,7 @@ proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0
 3     PM2.5     2 0.01391557     0 80             11 POLYGON ((545425.6 182000, ...
 ```
 
-But there are no GPS points for category 2 within it.
+But there are no GPS points for category 1 or 2 within it.
 
 ```r
 Simple feature collection with 1806 features and 4 fields
