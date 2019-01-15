@@ -186,3 +186,5 @@ First 10 features:
 ```
 ![No GPS issue](https://github.com/JimShady/laei_river_data/blob/master/maps/no_gps_issue.png)
 
+There are other areas like this. MAKE MAP.
+
