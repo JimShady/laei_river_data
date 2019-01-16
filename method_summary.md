@@ -1,7 +1,7 @@
 # Method summary
 
 ## Ship types
-There are 12 ship types in the inventory, known as vessel classifications. These are imported from a [CSV]https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) (also provided by PLA) . A sample is shown below.
+There are 12 ship types in the inventory, known as vessel classifications. These are imported from a [CSV](https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) provided by PLA. A sample is shown below.
 
 ```r
 # A tibble: 67 x 6
@@ -19,7 +19,7 @@ There are 12 ship types in the inventory, known as vessel classifications. These
 10 trawler (All types)                      Fishing                     2 FTR             17.5 Diesel   
 ```
 
-Each type of ship has a `code` and `group`. There are 4 groups.
+Each type of ship has a `code` and `group`. There are four groups.
 
 ## Emissions
 
@@ -41,20 +41,48 @@ PLA 2016 emissions covering London are imported as a [CSV](https://github.com/Ji
 10 Bulk carrier NOx         1587   40.7      0
 ```
 
-The `vessel_classifications` are joined to the `inventory_export_2016.csv` `by ship_type`. However there are three `ship_type`'s in the emissions that do not match with the `vessel_classifications`. These are edited to link as below.
+The `vessel_classifications` are joined to the `inventory_export_2016.csv` by `ship_type`. However there are three `ship_type`'s in the emissions that do not exactly match with the `vessel_classifications` file. These are edited to force them to link, as below.
 
 |Emissions ship_type    |Vessel classification ship_type|
 |:---------------------:|:-----------------------------:|
-|'RoRo Cargo / Vehicle' | 'RoRo Cargo/Vehicle'          |
-|'Cruise ship'          | 'Passenger (cruise)'          |
-|'Passenger'            | 'Passenger (ferry)'           |
+|'RoRo Cargo / Vehicle' |     'RoRo Cargo/Vehicle'      |
+|    'Cruise ship'      |     'Passenger (cruise)'      |
+|    'Passenger'        |     'Passenger (ferry)'       |
 
+The emissions now look like this:
 
+```r
+# A tibble: 3,159 x 6
+   ship_type    pollutant cellid sailing berth group
+   <chr>        <chr>      <dbl>   <dbl> <dbl> <dbl>
+ 1 Bulk carrier NOx         1584   41.8      0     3
+ 2 Bulk carrier NOx          911   22.6      0     3
+ 3 Bulk carrier NOx          907    0.5      0     3
+ 4 Bulk carrier NOx         2211    9.53     0     3
+ 5 Bulk carrier NOx         2205   49.8      0     3
+ 6 Bulk carrier NOx         2246   10.5      0     3
+ 7 Bulk carrier NOx          860   72.9      0     3
+ ```
+ 
+ Using the `group`, `pollutant` and `cellid` columns they are now grouped to give the below.
+ 
+ ```r
+ # A tibble: 1,590 x 5
+   pollutant cellid group  sailing    berth
+   <chr>      <dbl> <dbl>    <dbl>    <dbl>
+ 1 NOx          231     1    54.6      0   
+ 2 NOx          231     2  6778.       2.09
+ 3 NOx          231     3  1429.       0   
+ 4 NOx          231     4  3970.    4567.  
+ 5 NOx          232     1     3.35     0   
+ 6 NOx          232     2   521.       1.54
+ 7 NOx          232     3    95.7      0   
+ 8 NOx          232     4 10367.   29460.  
+ 9 NOx          234     1     2.28     0   
+10 NOx          234     2   332.       0 
+```
 
-Henceforth known as `Group 1`, `Group 2`, `Group 3` and `Group 4`. This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
-
-
-
+This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
 
 ```r
 Simple feature collection with 12 features and 6 fields
