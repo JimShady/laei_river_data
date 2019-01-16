@@ -177,7 +177,7 @@ First 10 features:
 10              1            88     1     1 POLYGON ((555700 177020, 55...
 ```
 
-![Map of small grid](https://github.com/JimShady/laei_river_data/blob/master/maps/small_grid_gps_count.png)
+![Map of small grid GPS counts in ecll 231](https://github.com/JimShady/laei_river_data/blob/master/maps/small_grid_gps_count_cell231.png)
 
 ## Berths
 The PLA 2016 emissions are split between `sailing` and `berth`. The berth emissions will be distributed to the berths that are within each `cellid`, weighted by the number of GPS points within the `small_grid` cell of the berth. A shapefile of berths was therefore imported, and joined to the small grid, adding an extra column to identify if that small_grid cell held a berth or not. The result of this is shown below as data and a map.
