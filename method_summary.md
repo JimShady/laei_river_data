@@ -82,7 +82,7 @@ The emissions now look like this:
 10 NOx          234     2   332.       0 
 ```
 
-This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
+This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map of NOx emission for sailing and berth and view of the data is shown below.
 
 ```r
 Simple feature collection with 12 features and 6 fields
@@ -105,8 +105,9 @@ proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0
 11     PM2.5     3   36.91392 0.000000e+00 11              1 POLYGON ((555000 178000, 55...
 12     PM2.5     4  180.97067 1.344956e+02 12              1 POLYGON ((555000 178000, 55...
 ```
+![NOx berth group 1](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_berth_group_one_nox.png)
 
-![Map of NO2 emissions](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_sailing.png)
+![NOx sailing group 1](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_sailing_group_one_nox.png)
 
 ## The 20m grid
 A 20m x 20m polygon grid (`small_grid`) covering the extent of the emission grid was now created. This was then intersected and clipped with a unique geographical representation of the emissions grid i.e. just one cell for each emission area, rather than twelve cells (3 pollutants x 4 groups). A `unique_geom_id` column was added to the `small_grid`, to enable linking of the `small_grid` back to the original emissions. Some of the data, and a section of the grid are shown below.
