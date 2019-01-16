@@ -229,7 +229,9 @@ First 10 features:
 10    231            88     1     1       <NA>          8271           2 0.0001209044 POLYGON ((555700 177020, 55...
 ```
 
-The small_grid was now duplicated 3 times, a pollutant column added to each and populated (PM2.5, NOx and PM), and then joined back together again. It was then joined to the emissions by `pollutant`, `group` and `unique_geom_id`. Subsequently the `contribution` was multiplied by the emission for that large grid square, and stored as `emissions`. A map of NOx emissions for groups 1-4 is shown below.
+The small_grid was now duplicated 3 times, a pollutant column added to each and populated (PM2.5, NOx and PM), and then joined back together again. It was then joined to the emissions by `pollutant`, `group` and `unique_geom_id`. Subsequently the `contribution` was multiplied by the emission for that large grid square, and stored as `emissions`.
+
+## Results
 
 ### Group 1 NOx
 ![Map of PLA berths](https://github.com/JimShady/laei_river_data/blob/master/maps/emissions_nox_group_1.png)
@@ -247,7 +249,7 @@ The small_grid was now duplicated 3 times, a pollutant column added to each and 
 
 ### 1km by 1km grids with emissions but no GPS points
 
-Now have a problem though, as there are 1km by 1km emission grid areas from the PLA, with emissions for sailing/berth, where there is no GPS data. So the small grid squares in those areas have a `contribution` of 0 and can't distribute the emissions. For example 
+There are 1km by 1km emission grid areas from the PLA, with emissions for sailing/berth, where there is no GPS data. For example 
 `unique_geom_id` area 11 has the below emissions.
 
 ```r
