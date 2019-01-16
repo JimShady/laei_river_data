@@ -48,49 +48,46 @@ emissions[emissions$ship_type == 'Passenger', 'ship_type']           <-'Passenge
 emissions                 <- left_join(emissions, unique(vessel_class[,c('aggregated_class', 'group')]),
                                        by = c('ship_type' = 'aggregated_class'))
 
+# Now aggregte
+emissions <- emissions %>% 
+              select(-ship_type) %>% 
+              group_by(pollutant, cellid, group) %>% 
+              summarise(sailing = sum(sailing, na.rm=T),
+                        berth   = sum(berth, na.rm=T)) %>% 
+              ungroup()
+
 # Now get the grid by exact cut
 grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
-grid                      <- grid[grid$LAEIPLAExt == 'LAEI',]
-grid                      <- grid[,c('GRID_ID0', 'CellID')]
-names(grid)               <- c('gridid', 'cellid', 'geom')
 
 # Link grid exact cut to eimssions exact cut, and remove some unncecessary data
-grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'cellid'))
-grid_emissions            <- st_set_geometry(grid_emissions, grid_emissions$geom)
-grid_emissions$ship_type  <- NULL
-grid_emissions$cellid     <- NULL
-grid_emissions$gridid     <- NULL
+grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'CellID')) %>%
+                             select(cellid, pollutant, group, sailing, berth, geom) %>%
+                              st_as_sf %>%
+                              mutate(id = row_number())
 
 rm(emissions, grid)
 
-# The emissions are split by ship_type, but we can do it by 'group' instead. So need to aggregate .
-grid_emissions$geom_group <- sapply(st_equals(grid_emissions), max)
+## PLOT OF NOx for group 2
+plot <- ggplot() + 
+  geom_sf(data = filter(grid_emissions, pollutant == 'NOx' & group == 1), colour = NA, aes(fill = sailing)) + 
+  scale_fill_distiller(palette = 'RdYlGn') + 
+  ggtitle('Sailing emissions: NOx group 1')
+ggsave('large_grid_sailing_group_one_nox.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
-grid_emissions            <- grid_emissions %>%
-                              group_by(geom_group, pollutant, group) %>%
-                              summarise(sailing = sum(sailing),
-                              berth   = sum(berth))
-
-grid_emissions$geom_group <- NULL
-grid_emissions$id         <- 1:nrow(grid_emissions) 
+plot <- ggplot() + 
+  geom_sf(data = filter(grid_emissions, pollutant == 'NOx' & group == 1), colour = NA, aes(fill = berth)) + 
+  scale_fill_distiller(palette = 'RdYlGn') + 
+  ggtitle('Berth emissions: NOx group 1')
+ggsave('large_grid_berth_group_one_nox.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
 ## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the
 ## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
 ## a left join look-up thing
 
-unique_geoms                       <- unique(grid_emissions[,'geom'])
-unique_geoms$unique_geom_id        <- 1:nrow(unique_geoms) 
-grid_emissions                     <- st_join(grid_emissions, unique_geoms, join = st_equals)
-
-## Unique geoms results
-#unique_geoms_result                <- rbind(unique_geoms %>% mutate(group = 1),
-#                                      unique_geoms %>% mutate(group = 2),
-#                                      unique_geoms %>% mutate(group = 3),
-#                                      unique_geoms %>% mutate(group = 4))
+unique_geoms                       <- unique(grid_emissions[,c('cellid','geom')])
 
 ## Setup the small grids
 small_grid                         <- st_make_grid(unique_geoms, cellsize = 20, what = 'polygons') %>% st_sf()
-
 small_grid                         <- st_intersection(small_grid, unique_geoms)
 small_grid$small_grid_id           <- 1:nrow(small_grid) 
 
@@ -101,21 +98,15 @@ small_grid_result         <- rbind(small_grid %>% mutate(group = 1),
                                    small_grid %>% mutate(group = 4))
 
 ## Get GPS data 
-## list GPS data
 list_of_gps_data             <- list.files('gps/', full.names=T, pattern = 'Rdata')
-
 list_of_gps_data             <- data.frame(filename         = list_of_gps_data,
                                            actual_date      = NA,
                                            stringsAsFactors = F)
-
 list_of_gps_data$actual_date <- substr(x     = list_of_gps_data$filename,
                                        start = 24,
                                        stop  = nchar(list_of_gps_data$filename)-6)
-
 list_of_gps_data$actual_date <- as.Date(list_of_gps_data$actual_date, format = '%d_%b_%Y')
-
 list_of_gps_data             <- list_of_gps_data[order(list_of_gps_data$actual_date),]
-
 list_of_gps_data             <- as.list(list_of_gps_data$filename)
 
 ## Function to calculate how many GPS points are within each large square, and within each small grid square
@@ -195,6 +186,14 @@ small_grid_result         <- small_grid_result %>%
                               left_join(gps_per_small_grid, by = c("small_grid_id" = "small_grid_id",
                                                                    "group" = "group"))
 rm(gps_per_small_grid)
+
+## Plot of cellid 231
+plot <- ggplot(data=filter(small_grid_result, cellid == 231)) + 
+          geom_sf(aes(fill=count), colour=NA) + 
+          facet_wrap(.~group, nrow = 1) + 
+          scale_fill_distiller(palette="Spectral", na.value="transparent") +
+          ggtitle('Count of annual GPS points in cellid 231')
+ggsave('small_grid_gps_count_cell231.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
 # Need to do something about the berths now.
 #Maybe need to buffer berths to intersect with more small grid squares
