@@ -110,7 +110,7 @@ proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0
 ![NOx sailing group 1](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_sailing_group_one_nox.png)
 
 ## The 20m grid
-A 20m x 20m polygon grid (`small_grid`) covering the extent of the emission grid was now created. This was then intersected and clipped with a unique geographical representation of the emissions grid i.e. just one cell for each emission area, rather than twelve cells (3 pollutants x 4 groups). A `unique_geom_id` column was added to the `small_grid`, to enable linking of the `small_grid` back to the original emissions. Some of the data, and a section of the grid are shown below.
+A 20m x 20m polygon grid (`small_grid`) covering the extent of the emission grid was now created. This was then intersected and clipped with a unique geographical representation of the emissions grid i.e. just one cell for each emission area, rather than twelve cells (3 pollutants x 4 groups). The link between the `small_grid` and the emissions is by `cellid`. Some of the data, and a section of the grid are shown below.
 
 ```r
 Simple feature collection with 305920 features and 2 fields
@@ -120,17 +120,17 @@ bbox:           xmin: 523000 ymin: 174000 xmax: 558000 ymax: 187000
 epsg (SRID):    27700
 proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs
 First 10 features:
-   unique_geom_id                       geometry small_grid_id
-1               1 POLYGON ((555000 177020, 55...             1
-2               1 POLYGON ((555000 177000, 55...             2
-3               1 POLYGON ((555020 177000, 55...             3
-4               1 POLYGON ((555040 177000, 55...             4
-5               1 POLYGON ((555060 177000, 55...             5
-6               1 POLYGON ((555080 177000, 55...             6
-7               1 POLYGON ((555100 177000, 55...             7
-8               1 POLYGON ((555120 177000, 55...             8
-9               1 POLYGON ((555140 177000, 55...             9
-10              1 POLYGON ((555160 177000, 55...            10
+   cellid                       geometry small_grid_id
+1     231 POLYGON ((555000 177020, 55...             1
+2     231 POLYGON ((555000 177000, 55...             2
+3     231 POLYGON ((555020 177000, 55...             3
+4     231 POLYGON ((555040 177000, 55...             4
+5     231 POLYGON ((555060 177000, 55...             5
+6     231 POLYGON ((555080 177000, 55...             6
+7     231 POLYGON ((555100 177000, 55...             7
+8     231 POLYGON ((555120 177000, 55...             8
+9     231 POLYGON ((555140 177000, 55...             9
+10    231 POLYGON ((555160 177000, 55...            10
 ```
 
 ![Map of small grid](https://github.com/JimShady/laei_river_data/blob/master/maps/small_grid.png)
