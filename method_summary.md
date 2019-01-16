@@ -287,4 +287,4 @@ proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0
 ```
 ### Artifacts
 
-
+[Map of artifacts](https://github.com/JimShady/laei_river_data/blob/master/maps/river_artifact.png)
