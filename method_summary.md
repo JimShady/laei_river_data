@@ -263,26 +263,27 @@ proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0
 
 ### 1km by 1km grids with GPS points(>20) but no emissions
 
-I guess this doesn't matter, but it's a bit of a concern.
+Very small issue, only two grids with small number of GPS points (drift?), suggest ignore, but shown for completeness.
+
 ```r
-Simple feature collection with 1728 features and 13 fields
-geometry type:  POLYGON
+small_grid_result %>% 
+      as_tibble() %>% 
+      group_by(cellid, group) %>% 
+      summarise(gps_count = sum(count, na.rm=T)) %>% 
+      left_join(grid_emissions, ., by = c("cellid" = "cellid", "group"="group")) %>% 
+      filter(gps_count > 20 & sailing == 0 & berth== 0)
+
+Simple feature collection with 2 features and 7 fields
+geometry type:  MULTIPOLYGON
 dimension:      XY
-bbox:           xmin: 524080 ymin: 175760 xmax: 545300 ymax: 182660
+bbox:           xmin: 528000 ymin: 177000 xmax: 530000 ymax: 178000
 epsg (SRID):    27700
 proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs
-First 10 features:
-   unique_geom_id small_grid_id group gps_count berth_name sailing_count berth_count contribution pollutant sailing berth id emissions                       geometry
-1             118        199136     1       912       <NA>        100134          NA 0.0091077956       NOx      NA    NA NA        NA POLYGON ((528003.7 177660, ...
-2             118        199137     1       536       <NA>        100134          NA 0.0053528272       NOx      NA    NA NA        NA POLYGON ((528020 177640, 52...
-3             118        199138     1       218       <NA>        100134          NA 0.0021770827       NOx      NA    NA NA        NA POLYGON ((528040 177640, 52...
-4             118        199139     1        67       <NA>        100134          NA 0.0006691034       NOx      NA    NA NA        NA POLYGON ((528060 177640, 52...
-5             118        199186     1       158       <NA>        100134          NA 0.0015778856       NOx      NA    NA NA        NA POLYGON ((528020 177664, 52...
-6             118        199187     1       556       <NA>        100134          NA 0.0055525596       NOx      NA    NA NA        NA POLYGON ((528040 177668.9, ...
-7             118        199188     1       894       <NA>        100134          NA 0.0089280364       NOx      NA    NA NA        NA POLYGON ((528060 177673.8, ...
-8             118        199189     1      1002       <NA>        100134          NA 0.0100065912       NOx      NA    NA NA        NA POLYGON ((528080 177678.7, ...
-9             118        199190     1       895       <NA>        100134          NA 0.0089380230       NOx      NA    NA NA        NA POLYGON ((528085.2 177680, ...
-10            118        199191     1       476       <NA>        100134          NA 0.0047536301       NOx      NA    NA NA        NA POLYGON ((528100 177660, 52...
+# A tibble: 2 x 8
+  cellid pollutant group sailing berth    id gps_count                                                                                    geom
+   <dbl> <chr>     <dbl>   <dbl> <dbl> <int>     <int>                                                                      <MULTIPOLYGON [m]>
+1   2276 NOx           4       0     0   338        82 (((528000 177659.2, 528000 178000, 528507.6 178000, 528522.2 177986.4, 528534.5 1779...
+2   2947 NOx           4       0     0   435       525 (((529000 177792.7, 529007.3 177792.2, 529013.6 177790.8, 529044 177783.4, 529071.4 ...
 ```
 ### Artifacts
 
