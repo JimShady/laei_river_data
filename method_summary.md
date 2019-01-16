@@ -147,9 +147,14 @@ First 10 features:
 5 0.3962933 51.44480         XTG
 6 0.3494783 51.45776         GPC
 ```
+On 1 January 2016 there were 1,368,454 GPS points in the dataset, 336,967 (25%) of which had no category. The remaining categories and counts are as below. 
 
+```r
+   BBU    BCE    BWC    DTD    DTS    GGC    GPC    OFY    OSU    OYT    PRR    RSR    TCO    TEO    TPD    URR    XFF    XTG 
+112277  21895  97107  43833   3207  30064  17034 116524  43235  16190  26679  53785  82291  17810   4055  44135  42119 259246
+```
 ## Counting GPS points
-The AIS data was imported in turn, and spatially joined to the `small_grid`. The result being that each `small_grid` contained the count of the total number of GPS points, per ship group, that had been recorded in that grid square. The map and data below show the annual count of GPS points within each grid square.
+The AIS data was imported in turn, and spatially joined to the `small_grid`. The result being that each `small_grid` contained the count of the total number of GPS points, per `group`, that had been recorded in that grid square. The map and data below show the annual count of GPS points within each grid square.
 
 ```r
 Simple feature collection with 131888 features and 4 fields
