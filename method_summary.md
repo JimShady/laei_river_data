@@ -1,7 +1,60 @@
 # Method summary
 
+## Ship types
+There are 12 ship types in the inventory, known as vessel classifications. These are imported from a [CSV]https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) (also provided by PLA) . A sample is shown below.
+
+```r
+# A tibble: 67 x 6
+   registry_class                           aggregated_class        group code  release_height fuel_type
+   <chr>                                    <chr>                   <dbl> <chr>          <dbl> <chr>    
+ 1 ferry                                    Passenger (ferry)           1 OFY              5   Diesel   
+ 2 cutter suction dredger                   Dredger                     2 DCS             17.5 Diesel   
+ 3 dredger                                  Dredger                     2 DDR             17.5 Diesel   
+ 4 hopper dredger                           Dredger                     2 DHD             17.5 Diesel   
+ 5 suction hopper dredger                   Dredger                     2 DSH             17.5 Diesel   
+ 6 sand suction dredger                     Dredger                     2 DSS             17.5 Diesel   
+ 7 trailing suction dredger                 Dredger                     2 DTD             17.5 Diesel   
+ 8 trailing suction hopper dredger          Dredger                     2 DTS             17.5 Diesel   
+ 9 fishing (general)                        Fishing                     2 FFS             17.5 Diesel   
+10 trawler (All types)                      Fishing                     2 FTR             17.5 Diesel   
+```
+
+Each type of ship has a `code` and `group`. There are 4 groups.
+
 ## Emissions
-PLA 2016 emissions covering London are imported as a [CSV](https://github.com/JimShady/laei_river_data/blob/master/emissions/inventory_export_2016.csv). These contain for each pollutant, ship type and cellid (LAEI exact cut) the estimated shipping emissions in kg per annum for that area (approx. 1km x 1km). There are 12 ship types in the inventory, however these are grouped by [vessel class](https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) (also provided by PLA) to 4 types. Henceforth known as `Group 1`, `Group 2`, `Group 3` and `Group 4`. This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
+
+PLA 2016 emissions covering London are imported as a [CSV](https://github.com/JimShady/laei_river_data/blob/master/emissions/inventory_export_2016.csv). These contain for each pollutant, ship type and cellid (LAEI exact cut) the estimated shipping emissions in kg per annum for that area (approx. 1km x 1km). A sample is shown below.
+
+```r
+# A tibble: 3,159 x 5
+   ship_type    pollutant cellid sailing berth
+   <chr>        <chr>      <dbl>   <dbl> <dbl>
+ 1 Bulk carrier NOx         1584   41.8      0
+ 2 Bulk carrier NOx          911   22.6      0
+ 3 Bulk carrier NOx          907    0.5      0
+ 4 Bulk carrier NOx         2211    9.53     0
+ 5 Bulk carrier NOx         2205   49.8      0
+ 6 Bulk carrier NOx         2246   10.5      0
+ 7 Bulk carrier NOx          860   72.9      0
+ 8 Bulk carrier NOx         2208   68.5      0
+ 9 Bulk carrier NOx         2212    2.99     0
+10 Bulk carrier NOx         1587   40.7      0
+```
+
+The `vessel_classifications` are joined to the `inventory_export_2016.csv` `by ship_type`. However there are three `ship_type`'s in the emissions that do not match with the `vessel_classifications`. These are edited to link as below.
+
+|Emissions ship_type    |Vessel classification ship_type|
+|:---------------------:|:-----------------------------:|
+|'RoRo Cargo / Vehicle' | 'RoRo Cargo/Vehicle'          |
+|'Cruise ship'          | 'Passenger (cruise)'          |
+|'Passenger'            | 'Passenger (ferry)'           |
+
+
+
+Henceforth known as `Group 1`, `Group 2`, `Group 3` and `Group 4`. This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
+
+
+
 
 ```r
 Simple feature collection with 12 features and 6 fields
