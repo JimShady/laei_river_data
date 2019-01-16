@@ -82,34 +82,35 @@ The emissions now look like this:
 10 NOx          234     2   332.       0 
 ```
 
-This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map (of NO2) and view of the data is shown below.
+This data is now joined to a geopackage of the LAEI grid exact cuts using the `cellid` identifier. A map of NOx emission for sailing and berth and view of the data is shown below.
 
 ```r
-Simple feature collection with 12 features and 6 fields
-geometry type:  POLYGON
+Simple feature collection with 1590 features and 5 fields
+geometry type:  MULTIPOLYGON
 dimension:      XY
-bbox:           xmin: 555000 ymin: 177000 xmax: 556000 ymax: 178000
+bbox:           xmin: 501000 ymin: 152000 xmax: 586000 ymax: 204000
 epsg (SRID):    27700
 proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs
-   pollutant group    sailing        berth id unique_geom_id                           geom
-1        NOx     1   54.58000 0.000000e+00  1              1 POLYGON ((555000 178000, 55...
-2        NOx     2 6778.18000 2.090000e+00  2              1 POLYGON ((555000 178000, 55...
-3        NOx     3 1428.70000 0.000000e+00  3              1 POLYGON ((555000 178000, 55...
-4        NOx     4 3969.60000 4.567010e+03  4              1 POLYGON ((555000 178000, 55...
-5         PM     1    1.50260 0.000000e+00  5              1 POLYGON ((555000 178000, 55...
-6         PM     2  285.13240 3.556416e-02  6              1 POLYGON ((555000 178000, 55...
-7         PM     3   38.85676 0.000000e+00  7              1 POLYGON ((555000 178000, 55...
-8         PM     4  190.49544 1.415743e+02  8              1 POLYGON ((555000 178000, 55...
-9      PM2.5     1    1.42747 0.000000e+00  9              1 POLYGON ((555000 178000, 55...
-10     PM2.5     2  270.87578 3.378595e-02 10              1 POLYGON ((555000 178000, 55...
-11     PM2.5     3   36.91392 0.000000e+00 11              1 POLYGON ((555000 178000, 55...
-12     PM2.5     4  180.97067 1.344956e+02 12              1 POLYGON ((555000 178000, 55...
+# A tibble: 1,590 x 6
+   cellid pollutant group  sailing    berth                                                                            geom
+    <dbl> <chr>     <dbl>    <dbl>    <dbl>                                                              <MULTIPOLYGON [m]>
+ 1    231 NOx           1    54.6      0    (((555000 178000, 556000 178000, 556000 177000, 555000 177000, 555000 178000)))
+ 2    231 NOx           2  6778.       2.09 (((555000 178000, 556000 178000, 556000 177000, 555000 177000, 555000 178000)))
+ 3    231 NOx           3  1429.       0    (((555000 178000, 556000 178000, 556000 177000, 555000 177000, 555000 178000)))
+ 4    231 NOx           4  3970.    4567.   (((555000 178000, 556000 178000, 556000 177000, 555000 177000, 555000 178000)))
+ 5    232 NOx           1     3.35     0    (((556000 178000, 557000 178000, 557000 177000, 556000 177000, 556000 178000)))
+ 6    232 NOx           2   521.       1.54 (((556000 178000, 557000 178000, 557000 177000, 556000 177000, 556000 178000)))
+ 7    232 NOx           3    95.7      0    (((556000 178000, 557000 178000, 557000 177000, 556000 177000, 556000 178000)))
+ 8    232 NOx           4 10367.   29460.   (((556000 178000, 557000 178000, 557000 177000, 556000 177000, 556000 178000)))
+ 9    234 NOx           1     2.28     0    (((555000 177000, 556000 177000, 556000 176000, 555000 176000, 555000 177000)))
+10    234 NOx           2   332.       0    (((555000 177000, 556000 177000, 556000 176000, 555000 176000, 555000 177000)))
 ```
+![NOx berth group 1](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_berth_group_one_nox.png)
 
-![Map of NO2 emissions](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_sailing.png)
+![NOx sailing group 1](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_sailing_group_one_nox.png)
 
 ## The 20m grid
-A 20m x 20m polygon grid (`small_grid`) covering the extent of the emission grid was now created. This was then intersected and clipped with a unique geographical representation of the emissions grid i.e. just one cell for each emission area, rather than twelve cells (3 pollutants x 4 groups). A `unique_geom_id` column was added to the `small_grid`, to enable linking of the `small_grid` back to the original emissions. Some of the data, and a section of the grid are shown below.
+A 20m x 20m polygon grid (`small_grid`) covering the extent of the emission grid was now created. This was then intersected and clipped with a unique geographical representation of the emissions grid i.e. just one cell for each emission area, rather than twelve cells (3 pollutants x 4 groups). The link between the `small_grid` and the emissions is by `cellid`. Some of the data, and a section of the grid are shown below.
 
 ```r
 Simple feature collection with 305920 features and 2 fields
@@ -119,17 +120,17 @@ bbox:           xmin: 523000 ymin: 174000 xmax: 558000 ymax: 187000
 epsg (SRID):    27700
 proj4string:    +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +towgs84=446.448,-125.157,542.06,0.15,0.247,0.842,-20.489 +units=m +no_defs
 First 10 features:
-   unique_geom_id                       geometry small_grid_id
-1               1 POLYGON ((555000 177020, 55...             1
-2               1 POLYGON ((555000 177000, 55...             2
-3               1 POLYGON ((555020 177000, 55...             3
-4               1 POLYGON ((555040 177000, 55...             4
-5               1 POLYGON ((555060 177000, 55...             5
-6               1 POLYGON ((555080 177000, 55...             6
-7               1 POLYGON ((555100 177000, 55...             7
-8               1 POLYGON ((555120 177000, 55...             8
-9               1 POLYGON ((555140 177000, 55...             9
-10              1 POLYGON ((555160 177000, 55...            10
+   cellid                       geometry small_grid_id
+1     231 POLYGON ((555000 177020, 55...             1
+2     231 POLYGON ((555000 177000, 55...             2
+3     231 POLYGON ((555020 177000, 55...             3
+4     231 POLYGON ((555040 177000, 55...             4
+5     231 POLYGON ((555060 177000, 55...             5
+6     231 POLYGON ((555080 177000, 55...             6
+7     231 POLYGON ((555100 177000, 55...             7
+8     231 POLYGON ((555120 177000, 55...             8
+9     231 POLYGON ((555140 177000, 55...             9
+10    231 POLYGON ((555160 177000, 55...            10
 ```
 
 ![Map of small grid](https://github.com/JimShady/laei_river_data/blob/master/maps/small_grid.png)
@@ -146,9 +147,14 @@ First 10 features:
 5 0.3962933 51.44480         XTG
 6 0.3494783 51.45776         GPC
 ```
+On 1 January 2016 there were 1,368,454 GPS points in the dataset, 336,967 (25%) of which had no category. The remaining categories and counts are as below. 
 
+```r
+   BBU    BCE    BWC    DTD    DTS    GGC    GPC    OFY    OSU    OYT    PRR    RSR    TCO    TEO    TPD    URR    XFF    XTG 
+112277  21895  97107  43833   3207  30064  17034 116524  43235  16190  26679  53785  82291  17810   4055  44135  42119 259246
+```
 ## Counting GPS points
-The AIS data was imported in turn, and spatially joined to the `small_grid`. The result being that each `small_grid` contained the count of the total number of GPS points, per ship group, that had been recorded in that grid square. The map and data below show the annual count of GPS points within each grid square.
+The AIS data was imported in turn, and spatially joined to the `small_grid`. The result being that each `small_grid` contained the count of the total number of GPS points, per `group`, that had been recorded in that grid square. The map and data below show the annual count of GPS points within each grid square.
 
 ```r
 Simple feature collection with 131888 features and 4 fields
