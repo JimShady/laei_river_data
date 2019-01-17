@@ -154,6 +154,8 @@ sfLibrary(tidyverse)
 sfExport(list=list("unique_geoms", "small_grid", "vessel_class"))
 sfLapply(list_of_gps_data, fun=process_gps_data)
 sfStop()
+
+## Tidy
 rm(process_gps_data, list_of_gps_data)
 
 ## Got results for each day in individual data frames. Read them all in, and combine into one data frame
@@ -206,38 +208,39 @@ small_grid_result <- small_grid_result %>%
 small_grid_result$berth_name <- as.character(small_grid_result$berth_name)
 
 ##
-large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + unique_geom_id, FUN=sum)
-large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & !is.na(small_grid_result$berth_name),], count ~ group + unique_geom_id, FUN=sum)
+large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + cellid, FUN=sum)
+large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & !is.na(small_grid_result$berth_name),], count ~ group + cellid, FUN=sum)
 
 names(large_grid_sailing_counts)[3] <- 'sailing_count'
 names(large_grid_berth_counts)[3]   <- 'berth_count'
 
-small_grid_result <- small_grid_result %>% rename(gps_count = count) %>% 
-                                          left_join(large_grid_sailing_counts, by = c("unique_geom_id" = "unique_geom_id",
+small_grid_result <- small_grid_result %>% left_join(large_grid_sailing_counts, by = c("cellid" = "cellid",
                                                                                       "group" = "group")) %>%
-                                          left_join(large_grid_berth_counts,   by = c("unique_geom_id" = "unique_geom_id",
+                                          left_join(large_grid_berth_counts,   by = c("cellid" = "cellid",
                                                                                       "group" = "group"))
 
 rm(large_grid_sailing_counts, large_grid_berth_counts)
 
 ## REmove unwanted
-small_grid_result         <- filter(small_grid_result, !is.na(gps_count))
+small_grid_result         <- filter(small_grid_result, !is.na(count))
 
 # Calculate the contribution percentages
 small_grid_result$contribution <- NA
 
-small_grid_result[is.na(small_grid_result$berth_name),'contribution'] <-  small_grid_result[is.na(small_grid_result$berth_name),]$gps_count / 
+small_grid_result[is.na(small_grid_result$berth_name),'contribution'] <-  small_grid_result[is.na(small_grid_result$berth_name),]$count / 
                                                                           small_grid_result[is.na(small_grid_result$berth_name),]$sailing_count
 
-small_grid_result[!is.na(small_grid_result$berth_name),'contribution'] <- small_grid_result[!is.na(small_grid_result$berth_name),]$gps_count / 
+small_grid_result[!is.na(small_grid_result$berth_name),'contribution'] <- small_grid_result[!is.na(small_grid_result$berth_name),]$count / 
                                                                           small_grid_result[!is.na(small_grid_result$berth_name),]$berth_count
 
 small_grid_result    <-   rbind(small_grid_result %>% mutate(pollutant = 'NOx'),
                                 small_grid_result %>% mutate(pollutant = 'PM'),
                                 small_grid_result %>% mutate(pollutant = 'PM2.5'))
 
-small_grid_result         <-  left_join(small_grid_result, (as.tibble(grid_emissions) %>% mutate(geom = NULL)), by = c("unique_geom_id" = "unique_geom_id",
-                                                                                 "group" = "group",
+grid_emissions$geom <- NULL
+
+small_grid_result         <-  left_join(small_grid_result, grid_emissions, by = c("cellid" = "cellid",
+                                                                                  "group" = "group",
                                                                                  "pollutant" = "pollutant"))
 
 small_grid_result$emissions <- NA
@@ -253,6 +256,6 @@ small_grid_result[!is.na(small_grid_result$berth_name),'emissions'] <-  small_gr
 #################################
 ## PLOTTING
 
-st_write(small_grid_result, 'small_grid_result.shp')
+st_write(small_grid_result, 'temp/small_grid_result.shp')
 
 
