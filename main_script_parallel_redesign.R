@@ -4,9 +4,6 @@ library(sf)
 library(tidyverse)
 library(scales)
 library(snowfall)
-library(devtools)
-install_github("yutannihilation/ggsflabel")
-library(ggsflabel)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
