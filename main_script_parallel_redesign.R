@@ -152,7 +152,7 @@ process_gps_data <-  function(x) {
 sfInit(parallel=TRUE, cpus=parallel:::detectCores()-1)
 sfLibrary(sf)
 sfLibrary(tidyverse)
-sfExport(list=list("unique_geoms", "small_grid", "vessel_class"))
+sfExport(list=list("small_grid", "vessel_class"))
 sfLapply(list_of_gps_data, fun=process_gps_data)
 sfStop()
 
