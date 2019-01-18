@@ -58,9 +58,13 @@ grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T
 
 # Link grid exact cut to eimssions exact cut, and remove some unncecessary data
 grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'CellID')) %>%
-                             select(cellid, pollutant, group, sailing, berth, geom) %>%
-                              st_as_sf %>%
-                              mutate(id = row_number())
+                             rename(large_grid_id = GRID_ID0, x = X_COORD, y = Y_COORD) %>%
+                             select(cellid, large_grid_id, x, y, pollutant, group, sailing, berth) %>%
+                             as.tibble() %>%
+                             group_by(pollutant, group, large_grid_id, x, y) %>%
+                             summarise(sailing = sum(sailing), berth = sum(berth)) %>%
+                             st_as_sf(coords = c("x", "y"), crs=27700) %>%
+                             st_buffer(dist = 500, endCapStyle= "SQUARE")
 
 rm(emissions, grid)
 
@@ -81,12 +85,12 @@ ggsave('large_grid_berth_group_one_nox.png', plot = plot, path = 'maps/', height
 ## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
 ## a left join look-up thing
 
-unique_geoms                       <- unique(grid_emissions[,c('cellid','geom')])
-
 ## Setup the small grids
-small_grid                         <- st_make_grid(unique_geoms, cellsize = 20, what = 'polygons') %>% st_sf()
-small_grid                         <- st_intersection(small_grid, unique_geoms)
-small_grid$small_grid_id           <- 1:nrow(small_grid) 
+small_grid                         <- unique(grid_emissions[,c('large_grid_id','geometry')]) %>%
+                                      st_make_grid(cellsize = 20, what = 'polygons') %>%
+                                      st_sf() %>%
+                                      st_intersection(unique(grid_emissions[,c('large_grid_id','geometry')])) %>%
+                                      mutate(small_grid_id = row_number())
 
 ## Make a small  grid results dataset that we'll count the GPS points into
 small_grid_result         <- rbind(small_grid %>% mutate(group = 1),
@@ -114,7 +118,7 @@ process_gps_data <-  function(x) {
   
   gps_data                                <- st_as_sf(data, coords = c('lon', 'lat'), crs = 4326) %>% 
                                                 st_transform(27700) %>% 
-                                                st_crop(st_bbox(unique_geoms)) %>%
+                                                st_crop(st_bbox(small_grid)) %>%
                                                 filter(!is.na(VESSEL_TYPE)) %>%
                                                 left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
                                                 select(group)
