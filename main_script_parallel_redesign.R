@@ -174,7 +174,7 @@ if (i == 1) {
 
 # remove some stuff we don't need anymore
 
-rm(list_of_small_grid_gps_result_data, gps_per_small_grid_id, i, small_grid, unique_geoms)
+rm(list_of_small_grid_gps_result_data, gps_per_small_grid_id, i, small_grid)
 
 # And do the same for the small exact cut grids
 
@@ -185,18 +185,18 @@ rm(gps_per_small_grid_bind)
 
 ## Now need to join to the result grids I made
 
-small_grid_result         <- small_grid_result %>%
-                              left_join(gps_per_small_grid, by = c("small_grid_id" = "small_grid_id",
-                                                                   "group" = "group"))
+small_grid_result         <- left_join(small_grid_result, gps_per_small_grid,
+                                       by = c("small_grid_id" = "small_grid_id", "group" = "group"))
+
 rm(gps_per_small_grid)
 
-## Plot of cellid 231
-plot <- ggplot(data=filter(small_grid_result, cellid == 231)) + 
+## Plot of large_grid_id 9886
+plot <- ggplot(data=filter(small_grid_result, large_grid_id == 9886)) + 
           geom_sf(aes(fill=count), colour=NA) + 
           facet_wrap(.~group, nrow = 1) + 
           scale_fill_distiller(palette="Spectral", na.value="transparent") +
-          ggtitle('Count of annual GPS points in cellid 231')
-ggsave('small_grid_gps_count_cell231.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+          ggtitle('Count of annual GPS points in large_grid_id 9886')
+ggsave('small_grid_gps_count_9886.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
 # Need to do something about the berths now.
 #Maybe need to buffer berths to intersect with more small grid squares
@@ -208,22 +208,22 @@ small_grid_result <- small_grid_result %>%
 
 small_grid_result$berth_name <- as.character(small_grid_result$berth_name)
 
+## remove data where there's less than 20 GPS points
+small_grid_result    <- filter(small_grid_result, count > 20)
+
 ##
-large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + cellid, FUN=sum)
-large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & !is.na(small_grid_result$berth_name),], count ~ group + cellid, FUN=sum)
+large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + large_grid_id, FUN=sum)
+large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & !is.na(small_grid_result$berth_name),], count ~ group + large_grid_id, FUN=sum)
 
 names(large_grid_sailing_counts)[3] <- 'sailing_count'
 names(large_grid_berth_counts)[3]   <- 'berth_count'
 
-small_grid_result <- small_grid_result %>% left_join(large_grid_sailing_counts, by = c("cellid" = "cellid",
+small_grid_result <- small_grid_result %>% left_join(large_grid_sailing_counts, by = c("large_grid_id" = "large_grid_id",
                                                                                       "group" = "group")) %>%
-                                          left_join(large_grid_berth_counts,   by = c("cellid" = "cellid",
+                                          left_join(large_grid_berth_counts,   by = c("large_grid_id" = "large_grid_id",
                                                                                       "group" = "group"))
 
 rm(large_grid_sailing_counts, large_grid_berth_counts)
-
-## REmove unwanted
-small_grid_result         <- filter(small_grid_result, !is.na(count))
 
 # Calculate the contribution percentages
 small_grid_result$contribution <- NA
@@ -238,9 +238,9 @@ small_grid_result    <-   rbind(small_grid_result %>% mutate(pollutant = 'NOx'),
                                 small_grid_result %>% mutate(pollutant = 'PM'),
                                 small_grid_result %>% mutate(pollutant = 'PM2.5'))
 
-grid_emissions$geom <- NULL
+grid_emissions$geometry <- NULL
 
-small_grid_result         <-  left_join(small_grid_result, grid_emissions, by = c("cellid" = "cellid",
+small_grid_result         <-  left_join(small_grid_result, grid_emissions, by = c("large_grid_id" = "large_grid_id",
                                                                                   "group" = "group",
                                                                                  "pollutant" = "pollutant"))
 
