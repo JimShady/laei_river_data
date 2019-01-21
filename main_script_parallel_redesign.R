@@ -208,8 +208,8 @@ plot <- ggplot(data=filter(small_grid_result, large_grid_id %in% c(10399,10400,1
           scale_fill_distiller(palette="Spectral", na.value="transparent") +
           geom_sf(data=st_crop(st_transform(the_thames,27700),
                        filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
-          theme(legend.position = 'none', axis.text = element_blank(), axis.ticks = element_blank()) +
-          ggtitle('Count of annual GPS points in large_grid_ids 10399,10400,10401 for group 1')
+          theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
+          ggtitle('Example of GPS counts')
 ggsave('small_grid_gps_count_example.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 rm(plot)
 
@@ -217,6 +217,8 @@ rm(plot)
 #Maybe need to buffer berths to intersect with more small grid squares
 
 berths <- st_read('shapefiles/Berths.shp') %>% select(berth_name) %>% st_set_crs(27700)
+
+
 
 small_grid_result <- small_grid_result %>% 
   st_join(berths, join = st_intersects, left = TRUE)
