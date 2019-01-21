@@ -74,12 +74,14 @@ plot <- ggplot() +
   scale_fill_distiller(palette = 'RdYlGn') + 
   ggtitle('Sailing emissions: NOx group 1')
 ggsave('large_grid_sailing_group_one_nox.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
 
 plot <- ggplot() + 
   geom_sf(data = filter(grid_emissions, pollutant == 'NOx' & group == 1), colour = NA, aes(fill = berth)) + 
   scale_fill_distiller(palette = 'RdYlGn') + 
   ggtitle('Berth emissions: NOx group 1')
 ggsave('large_grid_berth_group_one_nox.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
 
 ## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the
 ## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
@@ -97,6 +99,16 @@ small_grid_result         <- rbind(small_grid %>% mutate(group = 1),
                                    small_grid %>% mutate(group = 2),
                                    small_grid %>% mutate(group = 3),
                                    small_grid %>% mutate(group = 4))
+
+## Plot small grid as example
+plot <- ggplot() + 
+          geom_sf(data=filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1), aes(colour = as.factor(large_grid_id)), size=0.5) + 
+          geom_sf(data=st_crop(st_transform(the_thames,27700),
+                               filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+          theme(legend.position = 'none', axis.text = element_blank(), axis.ticks = element_blank()) +
+          ggtitle('Small grid example')
+ggsave('small_grid_example.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
 
 ## Get GPS data 
 list_of_gps_data             <- list.files('gps/', full.names=T, pattern = 'Rdata')
@@ -190,13 +202,16 @@ small_grid_result         <- left_join(small_grid_result, gps_per_small_grid,
 
 rm(gps_per_small_grid)
 
-## Plot of large_grid_id 9886
-plot <- ggplot(data=filter(small_grid_result, large_grid_id == 9886)) + 
-          geom_sf(aes(fill=count), colour=NA) + 
-          facet_wrap(.~group, nrow = 1) + 
+## Plot of small grid result, for large_grid_id 9886
+plot <- ggplot(data=filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)) + 
+          geom_sf(aes(fill=count), colour=NA) +
           scale_fill_distiller(palette="Spectral", na.value="transparent") +
-          ggtitle('Count of annual GPS points in large_grid_id 9886')
-ggsave('small_grid_gps_count_9886.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+          geom_sf(data=st_crop(st_transform(the_thames,27700),
+                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+          theme(legend.position = 'none', axis.text = element_blank(), axis.ticks = element_blank()) +
+          ggtitle('Count of annual GPS points in large_grid_ids 10399,10400,10401 for group 1')
+ggsave('small_grid_gps_count_example.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
 
 # Need to do something about the berths now.
 #Maybe need to buffer berths to intersect with more small grid squares
