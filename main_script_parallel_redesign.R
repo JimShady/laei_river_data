@@ -254,9 +254,6 @@ small_grid_result[!is.na(small_grid_result$berth_name),'emissions'] <-  small_gr
 
 
 #################################
-#################################
-## PLOTTING
 
 st_write(small_grid_result, 'temp/small_grid_result.shp')
-
 
