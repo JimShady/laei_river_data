@@ -260,6 +260,11 @@ small_grid_result         <-  left_join(small_grid_result, grid_emissions, by = 
                                                                                   "group" = "group",
                                                                                  "pollutant" = "pollutant"))
 
+# Things look ok up to here, but not sure why emissions don't add up at the end.
+#NOx	   661176.98	215689.65
+#PM	    22020.32896	4955.525838
+#PM2.5	20919.31251	4707.749545
+
 small_grid_result$emissions <- NA
 
 small_grid_result[is.na(small_grid_result$berth_name),'emissions'] <-  small_grid_result[is.na(small_grid_result$berth_name),]$contribution *
