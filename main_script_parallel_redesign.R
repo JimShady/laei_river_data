@@ -218,8 +218,6 @@ rm(plot)
 
 berths <- st_read('shapefiles/Berths.shp') %>% select(berth_name) %>% st_set_crs(27700)
 
-
-
 small_grid_result <- small_grid_result %>% 
   st_join(berths, join = st_intersects, left = TRUE)
 
@@ -269,6 +267,46 @@ small_grid_result[is.na(small_grid_result$berth_name),'emissions'] <-  small_gri
 small_grid_result[!is.na(small_grid_result$berth_name),'emissions'] <-  small_grid_result[!is.na(small_grid_result$berth_name),]$contribution *
                                                                               small_grid_result[!is.na(small_grid_result$berth_name),]$berth
 
+#################################
+## RESULT PLOTS
+#################################
+
+plot <- ggplot(data = filter(small_grid_result, group == 1 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10399,10400,10401))) +
+  geom_sf(colour = NA, aes(fill = emissions)) +
+  geom_sf(data=st_crop(st_transform(the_thames,27700),
+                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+  scale_fill_distiller(palette = 'Spectral') +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
+  ggtitle('NOx group 1 emissions')
+ggsave('nox_group_1_result_emissions.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
+
+plot <- ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10399,10400,10401))) +
+  geom_sf(colour = NA, aes(fill = emissions)) +
+  geom_sf(data=st_crop(st_transform(the_thames,27700),
+                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+  scale_fill_distiller(palette = 'Spectral') +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
+  ggtitle('NOx group 2 emissions')
+ggsave('nox_group_2_result_emissions.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
+
+plot <- ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'PM2.5' & !is.na(emissions) & large_grid_id %in% c(10399,10400,10401))) +
+  geom_sf(colour = NA, aes(fill = emissions)) +
+  geom_sf(data=st_crop(st_transform(the_thames,27700),
+                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+  scale_fill_distiller(palette = 'Spectral') +
+  theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
+  ggtitle('PM2.5 group 2 emissions')
+ggsave('pm25_group_2_result_emissions.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
+
+#################################
+## ARTEFACT PLOT
+#################################
+ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10066, 9894, 9895, 10067))) +
+  geom_sf(colour = NA, aes(fill = emissions)) +
+  scale_fill_distiller(palette = 'Spectral')
 
 #################################
 
