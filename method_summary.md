@@ -269,7 +269,7 @@ small_grid_result %>%
 10 NOx           2          9717   0.01   0            0
 # ... with 52 more rows
 ```
-However the emissions in these `large_grid_squares` are a very small proportion of the total emissions (shown below) so we have decided not to investigate this issue further. This small anomaly is likely due to the way that the PLA have calculated emissions.
+However the emissions in these `large_grid_squares` are a very small proportion of the total emissions (shown below) so we have decided not to investigate this issue further.
 
 |Pollutant | Sailing | Berth  |
 |:--------:|:-------:|:------:|
@@ -279,5 +279,7 @@ However the emissions in these `large_grid_squares` are a very small proportion 
 -------------------------------
 
 ### Artifacts
+
+Due to the way that the emissions were calculated on a grid, there are some artefacts when visualising the data, such as shown below. These have not been resolved (as there is no easy way to do so). It is a limitation of the underlying data/method before our work.
 
 ![Map of artifacts]()
