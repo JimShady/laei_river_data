@@ -91,7 +91,8 @@ rm(plot)
 small_grid                         <- unique(grid_emissions[,c('large_grid_id','geometry')]) %>%
                                       st_make_grid(cellsize = 20, what = 'polygons') %>%
                                       st_sf() %>%
-                                      st_intersection(unique(grid_emissions[,c('large_grid_id','geometry')])) %>%
+                                      st_join(unique(grid_emissions[,c('large_grid_id','geometry')]), join = st_within) %>%
+                                      filter(!is.na(large_grid_id)) %>%
                                       mutate(small_grid_id = row_number())
 
 ## Make a small  grid results dataset that we'll count the GPS points into
@@ -128,10 +129,10 @@ process_gps_data <-  function(x) {
   
   load(x)
   
-  gps_data                                <- st_as_sf(data, coords = c('lon', 'lat'), crs = 4326) %>% 
-                                                st_transform(27700) %>% 
-                                                st_crop(st_bbox(small_grid)) %>%
-                                                filter(!is.na(VESSEL_TYPE)) %>%
+  gps_data                                <-    filter(data, !is.na(VESSEL_TYPE)) %>%
+                                                st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>% 
+                                                st_transform(27700) %>% #27
+                                                st_crop(st_bbox(small_grid)) %>% #61
                                                 left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
                                                 select(group)
   
