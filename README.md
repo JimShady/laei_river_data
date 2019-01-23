@@ -282,4 +282,4 @@ However the emissions in these `large_grid_squares` are a very small proportion 
 
 Due to the way that the emissions were calculated on a grid, there are some artefacts when visualising the data, such as shown below. These have not been resolved (as there is no easy way to do so). It is a limitation of the underlying data/method before our work.
 
-![Map of artifacts]()
+![Map of artifacts](https://github.com/JimShady/laei_river_data/blob/master/maps/artefact_plot.png)
