@@ -4,6 +4,8 @@ library(sf)
 library(tidyverse)
 library(scales)
 library(snowfall)
+library(fasterize)
+library(raster)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
@@ -47,7 +49,7 @@ emissions                 <- left_join(emissions, unique(vessel_class[,c('aggreg
 
 # Now aggregte
 emissions <- emissions %>% 
-              select(-ship_type) %>% 
+              dplyr::select(-ship_type) %>% 
               group_by(pollutant, cellid, group) %>% 
               summarise(sailing = sum(sailing, na.rm=T),
                         berth   = sum(berth, na.rm=T)) %>% 
@@ -59,7 +61,7 @@ grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T
 # Link grid exact cut to eimssions exact cut, and remove some unncecessary data
 grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'CellID')) %>%
                              rename(large_grid_id = GRID_ID0, x = X_COORD, y = Y_COORD) %>%
-                             select(cellid, large_grid_id, x, y, pollutant, group, sailing, berth) %>%
+                             dplyr::select(cellid, large_grid_id, x, y, pollutant, group, sailing, berth) %>%
                              as.tibble() %>%
                              group_by(pollutant, group, large_grid_id, x, y) %>%
                              summarise(sailing = sum(sailing), berth = sum(berth)) %>%
@@ -134,7 +136,7 @@ process_gps_data <-  function(x) {
                                                 st_transform(27700) %>% #27
                                                 st_crop(st_bbox(small_grid)) %>% #61
                                                 left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
-                                                select(group)
+                                                dplyr::select(group)
   
   rm(data)
   
@@ -148,7 +150,7 @@ process_gps_data <-  function(x) {
 
   # Sum up by the grid square
   gps_per_small_grid_id                   <- gps_per_small_grid_id %>% 
-                                                select(group, small_grid_id) %>%
+                                                dplyr::select(group, small_grid_id) %>%
                                                 group_by(small_grid_id, group) %>%
                                                 summarise(count = length(group))
   
@@ -217,15 +219,16 @@ rm(plot)
 # Need to do something about the berths now.
 #Maybe need to buffer berths to intersect with more small grid squares
 
-berths <- st_read('shapefiles/Berths.shp') %>% select(berth_name) %>% st_set_crs(27700)
+berths <- st_read('shapefiles/Berths.shp') %>% dplyr::select(berth_name) %>% st_set_crs(27700)
 
 small_grid_result <- small_grid_result %>% 
   st_join(berths, join = st_intersects, left = TRUE)
 
 small_grid_result$berth_name <- as.character(small_grid_result$berth_name)
 
-## remove data where there's less than 20 GPS points
+## remove data where there's very few GPS points
 small_grid_result    <- filter(small_grid_result, count > 20)
+
 
 ##
 large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + large_grid_id, FUN=sum)
@@ -254,16 +257,10 @@ small_grid_result    <-   rbind(small_grid_result %>% mutate(pollutant = 'NOx'),
                                 small_grid_result %>% mutate(pollutant = 'PM'),
                                 small_grid_result %>% mutate(pollutant = 'PM2.5'))
 
-grid_emissions$geometry <- NULL
-
-small_grid_result         <-  left_join(small_grid_result, grid_emissions, by = c("large_grid_id" = "large_grid_id",
-                                                                                  "group" = "group",
-                                                                                 "pollutant" = "pollutant"))
-
-# Things look ok up to here, but not sure why emissions don't add up at the end.
-#NOx	   661176.98	215689.65
-#PM	    22020.32896	4955.525838
-#PM2.5	20919.31251	4707.749545
+small_grid_result         <-  left_join(small_grid_result, st_drop_geometry(grid_emissions),
+                                        by = c("large_grid_id" = "large_grid_id",
+                                               "group" = "group",
+                                               "pollutant" = "pollutant"))
 
 small_grid_result$emissions <- NA
 
@@ -272,6 +269,8 @@ small_grid_result[is.na(small_grid_result$berth_name),'emissions'] <-  small_gri
 
 small_grid_result[!is.na(small_grid_result$berth_name),'emissions'] <-  small_grid_result[!is.na(small_grid_result$berth_name),]$contribution *
                                                                               small_grid_result[!is.na(small_grid_result$berth_name),]$berth
+
+small_grid_result    <- filter(small_grid_result, !is.na(emissions))
 
 #################################
 ## RESULT PLOTS
@@ -282,39 +281,98 @@ plot <- ggplot(data = filter(small_grid_result, group == 1 & pollutant == 'NOx' 
   geom_sf(data=st_crop(st_transform(the_thames,27700),
                        filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
   scale_fill_distiller(palette = 'Spectral') +
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
-  ggtitle('NOx group 1 emissions')
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_text(size=8),
+        panel.background = element_blank(),
+        plot.title = element_text(size=8)) +
+  ggtitle('NOx group 1 emissions (kg/annum)')
 ggsave('nox_group_1_result_emissions.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 rm(plot)
 
 plot <- ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10399,10400,10401))) +
   geom_sf(colour = NA, aes(fill = emissions)) +
   geom_sf(data=st_crop(st_transform(the_thames,27700),
-                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 2)), fill=NA, colour = 'blue') +
   scale_fill_distiller(palette = 'Spectral') +
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
-  ggtitle('NOx group 2 emissions')
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_text(size=8),
+        panel.background = element_blank(),
+        plot.title = element_text(size=8)) +
+  ggtitle('NOx group 2 emissions (kg/annum)')
 ggsave('nox_group_2_result_emissions.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 rm(plot)
 
 plot <- ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'PM2.5' & !is.na(emissions) & large_grid_id %in% c(10399,10400,10401))) +
   geom_sf(colour = NA, aes(fill = emissions)) +
   geom_sf(data=st_crop(st_transform(the_thames,27700),
-                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 1)), fill=NA, colour = 'blue') +
+                       filter(small_grid_result, large_grid_id %in% c(10399,10400,10401) & group == 2)), fill=NA, colour = 'blue') +
   scale_fill_distiller(palette = 'Spectral') +
-  theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.title = element_text(size=12)) +
-  ggtitle('PM2.5 group 2 emissions')
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.title = element_text(size=8),
+        panel.background = element_blank(),
+        plot.title = element_text(size=8)) +
+  ggtitle('PM2.5 group 2 emissions (kg/annum)')
 ggsave('pm25_group_2_result_emissions.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 rm(plot)
 
 #################################
 ## ARTEFACT PLOT
 #################################
-ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10066, 9894, 9895, 10067))) +
+plot <- ggplot(data = filter(small_grid_result, group == 2 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10062, 10063, 9891))) +
   geom_sf(colour = NA, aes(fill = emissions)) +
-  scale_fill_distiller(palette = 'Spectral')
+  geom_sf(data=st_crop(st_transform(the_thames,27700),
+                       filter(small_grid_result, group == 2 & pollutant == 'NOx' & !is.na(emissions) & large_grid_id %in% c(10062, 10063, 9891))), fill=NA, colour = 'blue') +
+  scale_fill_distiller(palette = 'Spectral') +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = 'none',
+        panel.background = element_blank(),
+        plot.title = element_text(size=8)) +
+  ggtitle('Example of grid artefact effect')
+ggsave('artefact_plot.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+rm(plot)
 
 #################################
+rm(berths, vessel_class, the_thames)
 
-st_write(small_grid_result, 'temp/small_grid_result.shp')
+### Make into 20m points
 
+small_grid_result   <- st_centroid(small_grid_result)
+
+### Re-organise for David
+small_grid_result$x         <- st_coordinates(small_grid_result)[,1]
+small_grid_result$y         <- st_coordinates(small_grid_result)[,2]
+small_grid_result$geometry  <- NULL
+small_grid_result           <- as.tibble(small_grid_result)
+
+# Output small grid in desired format
+result <- small_grid_result %>% 
+                dplyr::select(x,y,group, pollutant, emissions) %>% 
+                spread(pollutant, emissions) %>% 
+                rename_all(tolower) %>% 
+                mutate(no2 = nox * 0.05,
+                       year = 2016)
+
+write_csv(result, 'results/shipping_emissions_20m.csv')
+
+rm(result)
+
+# Output large grid in desired format
+
+result <- grid_emissions %>%
+                st_drop_geometry() %>%
+                mutate(emissions = sailing + berth) %>%
+                dplyr::select(pollutant, large_grid_id, emissions) %>%
+                group_by(pollutant, large_grid_id) %>%
+                summarise(emissions = sum(emissions, na.rm=T)) %>%
+                spread(pollutant, emissions) %>%
+                rename_all(tolower) %>%
+                mutate(no2 = nox * 0.05,
+                       year = 2016)
+
+write_csv(result, 'results/shipping_emissions_1km.csv')
+
+rm(result)
