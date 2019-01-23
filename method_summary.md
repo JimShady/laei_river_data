@@ -155,7 +155,7 @@ On 1 January 2016 (taken as an example day) there were 1,368,454 GPS points in t
 112277  21895  97107  43833   3207  30064  17034 116524  43235  16190  26679  53785  82291  17810   4055  44135  42119 259246
 ```
 ## Counting GPS points
-The AIS data was imported in turn, and spatially joined to the `small_grid` to create the `small_grid_result`. This being that each `small_grid` contained the count of the total number of GPS points, per `group`, that had been recorded in that grid square over 2016. 20m cells with less than 20 GPS points in them were treated as GPS drift error and were discarded. The map and data below show the annual count of GPS points within each grid square.
+The AIS data was imported in turn, and spatially joined to the `small_grid` to create the `small_grid_result`. This being that each `small_grid` contained the count of the total number of GPS points, per `group`, that had been recorded in that grid square over 2016.  The map and data below show the annual count of GPS points within each grid square.
 
 ```r
 Simple feature collection with 1223680 features and 5 fields
