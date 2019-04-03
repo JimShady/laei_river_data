@@ -31,7 +31,7 @@ for name in files:
   #IDtable=pd.DataFrame({'ID':IDuniq,'n':ID_n})
   ##############################################
   
-  boatMsgs=[msg for msg in msgs if 'nav_status' in msg.keys()]
+  boatMsgs=[msg for msg in msgs if 'nav_status' in msg.keys()] ## Only keep rows of data where nav_status exists (removes lighthouses, buoys etc)
   
   ############### Make table of navstats #############################
   #navStat=[msg['nav_status'] for msg in boatMsgs]
@@ -52,7 +52,7 @@ for name in files:
   time=[msg['tagblock_timestamp'] for msg in boatMsgs]
   
   boatData=pd.DataFrame({'MMSI':mmsi,'lon':lon,'lat':lat,'sog_kts':sog,'time':time})
-  boatData=boatData.loc[boatData.MMSI>=2,:]
+  boatData=boatData.loc[boatData.MMSI>=2,:] # not quite sure what this is ... filters out some data we don't want.
   boatData=boatData.loc[boatData.lon<  0.4,:]
   boatData=boatData.loc[boatData.lon> -0.8,:]
   boatData=boatData.loc[boatData.lat< 51.8,:]

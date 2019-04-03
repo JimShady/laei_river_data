@@ -215,6 +215,27 @@ list_of_gps_data$actual_date <- as.Date(list_of_gps_data$actual_date, format = '
 list_of_gps_data             <- list_of_gps_data[order(list_of_gps_data$actual_date),]
 list_of_gps_data             <- as.list(list_of_gps_data$filename)
 
+## Example plot of one days days
+
+load('gps/Gravesend_ANSData_01_Apr_2016.Rdata')
+
+test_gps <- filter(data, !is.na(VESSEL_TYPE)) %>%
+              st_as_sf(coords = c('lon', 'lat'), crs = 4326) %>% 
+              st_transform(27700) %>% #27
+              st_crop(st_bbox(small_grid)) %>% #61
+              left_join(vessel_class, by = c('VESSEL_TYPE' = 'code')) %>%
+              dplyr::select(group)
+
+plot <- ggplot() +
+  geom_sf(data = temp) +
+  geom_sf(data = test_gps, alpha=0.3, size=0.5, colour='blue') +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank())
+
+ggsave('one_day_gps_example.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+
+
 ## Function to calculate how many GPS points are within each large square, and within each small grid square
 
 process_gps_data <-  function(x) {
@@ -309,7 +330,25 @@ rm(plot)
 # Need to do something about the berths now.
 #Maybe need to buffer berths to intersect with more small grid squares
 
-berths <- st_read('shapefiles/Berths.shp') %>% dplyr::select(berth_name) %>% st_set_crs(27700)
+berths <- st_read('shapefiles/Berths.shp') %>%
+            dplyr::select(berth_name) %>%
+            st_set_crs(27700) %>%
+            filter(berth_name != 'Coldharbour Jetty')
+
+## Plot the berths
+plot <- ggplot() + 
+  geom_sf(data = temp) + 
+  geom_sf(data = st_join(berths,temp, join = st_intersects, left = FALSE),colour = 'red', size=0.5) +
+  coord_sf() +
+  scale_fill_manual(name = "berths") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank())
+
+ggsave('pla_berths_map.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+
+rm(plot)
+
 
 small_grid_result <- small_grid_result %>% 
   st_join(berths, join = st_intersects, left = TRUE)
@@ -466,3 +505,40 @@ result <- grid_emissions %>%
 write_csv(result, 'results/shipping_emissions_1km.csv')
 
 rm(result)
+
+## Make a map of the final small grid shipping emissions
+small_grid <- read_csv('results/shipping_emissions_20m.csv') %>%
+  st_as_sf(coords = c("x", "y"), crs=27700) %>%
+  st_buffer(dist = 10, endCapStyle= "SQUARE")
+
+small_grid <- filter(small_grid, group == 1 & !is.na(no2) & no2 > 0)
+
+labels <-  list()
+
+for (i in 1:5) {
+  labels[[i]]                   <- paste(round(quantile(small_grid$no2,seq(0,1,0.2))[i],3),
+                                         '-',
+                                         round(quantile(small_grid$no2,seq(0,1,0.2))[(i+1)],3))
+}
+labels                          <- unlist(labels)
+small_grid$emissions <- cut(small_grid$no2, 
+                                     breaks=c(0,quantile(small_grid$no2,seq(0,1,0.2))[2:10]),
+                                     labels = labels)
+colours <- c('#ffffd4','#fed98e','#fe9929','#d95f0e','#993404')
+
+plot <- ggplot() + 
+  geom_sf(data = temp) + 
+  geom_sf(data = small_grid,lwd =0, aes(fill = emissions)) +
+  coord_sf(xlim = c(529735, 533671), ylim = c(180049, 181052)) +
+  scale_fill_manual(values = colours, name = "NO2 emissions (kg/year)") +
+  #scale_fill_discrete(name = expression(paste("NOx emissions (", mu, m^2, "/", m^3, ")", sep=""))) +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank())
+
+ggsave('small_grid_passenger_no2_emissions_example.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+
+rm(plot, small_grid, colours, i, labels)
+
+
+              
