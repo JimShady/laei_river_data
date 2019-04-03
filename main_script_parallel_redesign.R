@@ -47,6 +47,48 @@ emissions[emissions$ship_type == 'Passenger', 'ship_type']           <-'Passenge
 emissions                 <- left_join(emissions, unique(vessel_class[,c('aggregated_class', 'group')]),
                                        by = c('ship_type' = 'aggregated_class'))
 
+# Now get the grid by exact cut
+grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
+
+# Make map of emissions before aggregating
+
+temp                      <- left_join(emissions, grid, by = c('cellid' = 'CellID')) %>%
+                                  rename(large_grid_id = GRID_ID0, x = X_COORD, y = Y_COORD) %>%
+                                  dplyr::select(cellid, ship_type,large_grid_id, x, y, pollutant, group, sailing, berth) %>%
+                                  st_as_sf(coords = c("x", "y"), crs=27700) %>%
+                                  st_buffer(dist = 500, endCapStyle= "SQUARE")
+
+nox_roro_sailing <- filter(temp, pollutant == 'NOx' & ship_type == 'RoRo Cargo/Vehicle' & !is.na(sailing) & sailing > 0) %>%
+  dplyr::select(sailing)
+
+labels <-  list()
+
+for (i in 1:5) {
+  labels[[i]]                   <- paste(round(quantile(nox_roro_sailing$sailing,seq(0,1,0.2))[i],0),
+                                         '-',
+                                         round(quantile(nox_roro_sailing$sailing,seq(0,1,0.2))[(i+1)],0))
+}
+labels                          <- unlist(labels)
+nox_roro_sailing$emissions <- cut(nox_roro_sailing$sailing, 
+                                       breaks=c(0,quantile(nox_roro_sailing$sailing,seq(0,1,0.2))[2:10]),
+                                       labels = labels)
+colours <- c('#ffffd4','#fed98e','#fe9929','#d95f0e','#993404')
+
+plot <- ggplot() + 
+  geom_sf(data=temp) +
+  geom_sf(data = nox_roro_sailing, colour = 'black', aes(fill = emissions)) +
+  coord_sf() +
+  scale_fill_manual(values = colours, name = "NOx emissions (kg/year)") +
+  #scale_fill_discrete(name = expression(paste("NOx emissions (", mu, m^2, "/", m^3, ")", sep=""))) +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank())
+
+ggsave('large_grid_nox_roro_sailing_sailing.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+
+rm(plot, nox_roro_sailing, colours, i, labels)
+
+
 # Now aggregte
 emissions <- emissions %>% 
               dplyr::select(-ship_type) %>% 
@@ -54,9 +96,6 @@ emissions <- emissions %>%
               summarise(sailing = sum(sailing, na.rm=T),
                         berth   = sum(berth, na.rm=T)) %>% 
               ungroup()
-
-# Now get the grid by exact cut
-grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
 
 # Link grid exact cut to eimssions exact cut, and remove some unncecessary data
 grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'CellID')) %>%
@@ -70,17 +109,18 @@ grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'CellI
 
 rm(emissions, grid)
 
-## PLOT OF NOx for group 2
+## PLOT OF NOx for group 1 sailing
 
 #####
-nox_group_one_sailing <- filter(grid_emissions, pollutant == 'NOx' & group == 1 & !is.na(sailing)) %>% dplyr::select(sailing)
+nox_group_one_sailing <- filter(grid_emissions, pollutant == 'NOx' & group == 1 & !is.na(sailing) & sailing > 0) %>%
+                          dplyr::select(sailing)
 
 labels <-  list()
 
 for (i in 1:5) {
-  labels[[i]]                   <- paste(quantile(nox_group_one_sailing$sailing,seq(0,1,0.1))[i],
+  labels[[i]]                   <- paste(round(quantile(nox_group_one_sailing$sailing,seq(0,1,0.2))[i],0),
                                          '-',
-                                         quantile(nox_group_one_sailing$sailing,seq(0,1,0.1))[(i+1)])
+                                         round(quantile(nox_group_one_sailing$sailing,seq(0,1,0.2))[(i+1)],0))
                 }
 labels                          <- unlist(labels)
 nox_group_one_sailing$emissions <- cut(nox_group_one_sailing$sailing, 
@@ -88,8 +128,9 @@ nox_group_one_sailing$emissions <- cut(nox_group_one_sailing$sailing,
                                    labels = labels)
 colours <- c('#ffffd4','#fed98e','#fe9929','#d95f0e','#993404')
 
-plot <- ggplot(data = nox_group_one_sailing) + 
-  geom_sf(colour = 'black', aes(fill = emissions)) +
+plot <- ggplot() +
+  geom_sf(data = temp) +
+  geom_sf(data = nox_group_one_sailing, colour = 'black', aes(fill = emissions)) +
   coord_sf() +
   scale_fill_manual(values = colours, name = "NOx emissions (kg/year)") +
   #scale_fill_discrete(name = expression(paste("NOx emissions (", mu, m^2, "/", m^3, ")", sep=""))) +
@@ -99,15 +140,40 @@ plot <- ggplot(data = nox_group_one_sailing) +
 
 ggsave('large_grid_sailing_group_one_nox.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
-rm(plot)
+rm(plot, nox_group_one_sailing, colours, i, labels)
+
+## PLOT OF NOx for group 1 berth
+
+#####
+nox_group_one_berth <- filter(grid_emissions, pollutant == 'NOx' & group == 1 & !is.na(berth) & berth > 0) %>%
+  dplyr::select(berth)
+
+labels <-  list()
+
+for (i in 1:5) {
+  labels[[i]]                   <- paste(round(quantile(nox_group_one_berth$berth,seq(0,1,0.2))[i],3),
+                                         '-',
+                                         round(quantile(nox_group_one_berth$berth,seq(0,1,0.2))[(i+1)],3))
+}
+labels                          <- unlist(labels)
+nox_group_one_berth$emissions <- cut(nox_group_one_berth$berth, 
+                                       breaks=c(0,quantile(nox_group_one_berth$berth,seq(0,1,0.2))[2:10]),
+                                       labels = labels)
+colours <- c('#ffffd4','#fed98e','#fe9929','#d95f0e','#993404')
 
 plot <- ggplot() + 
-  geom_sf(data = filter(grid_emissions, pollutant == 'NOx' & group == 1), colour = NA, aes(fill = berth)) + 
-  scale_fill_distiller(palette = 'RdYlGn') + 
-  ggtitle('Berth emissions: NOx group 1')
+  geom_sf(data = temp) + 
+  geom_sf(data = nox_group_one_berth,colour = 'black', aes(fill = emissions)) +
+  coord_sf() +
+  scale_fill_manual(values = colours, name = "NOx emissions (kg/year)") +
+  #scale_fill_discrete(name = expression(paste("NOx emissions (", mu, m^2, "/", m^3, ")", sep=""))) +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank())
+
 ggsave('large_grid_berth_group_one_nox.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
-rm(plot)
+rm(plot, nox_group_one_berth, colours, i, labels)
 
 ## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the
 ## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
