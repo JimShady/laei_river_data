@@ -205,6 +205,9 @@ First 10 features:
 9  Royal Primrose Works POINT (540200 179850)
 10     Silvertown Wharf POINT (540440 179720)
 ```
+
+![Map of berths](https://github.com/JimShady/laei_river_data/blob/master/maps/pla_berths_map.png)
+
 ## Distributing emissions
 The `small_grid_result` was grouped by `large_grid_id` to calculate the total number of GPS points in the parent grids. Then the count of GPS points in each 20m by 20m grid, was divided by the total of GPS points within the larger grid (1km by 1km) for that area, to give a weighting for each small grid to draw down the emissions. The grid cells containing berths were calculated in a similar manner but indenpendantly i.e. only cells that contained berths were divided by the `berth_count`. This created the `contribution` column.
 
