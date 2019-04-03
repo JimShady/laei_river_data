@@ -41,6 +41,8 @@ PLA 2016 emissions covering London are imported as a [CSV](https://github.com/Ji
 10 Bulk carrier NOx         1587   40.7      0
 ```
 
+![NOx RoRo emissions](https://github.com/JimShady/laei_river_data/blob/master/maps/large_grid_nox_roro_sailing_sailing.png)
+
 The [`vessel_classifications`](https://github.com/JimShady/laei_river_data/blob/master/docs/vessel_classifications.csv) are joined to the [`inventory_export_2016.csv`](https://github.com/JimShady/laei_river_data/blob/master/emissions/inventory_export_2016.csv) by `ship_type`. However there are three `ship_type`'s in the emissions that do not exactly match with the `vessel_classifications` file. These are edited to force them to link, as below.
 
 |Emissions ship_type    |Vessel classification ship_type|
