@@ -65,14 +65,18 @@ temp                      <- st_crop(temp, focus_area) %>%
 temp$sailing              <- factor(temp$sailing)
 
 colourCount = length(unique(temp$sailing))
-getPalette  = colorRampPalette(brewer.pal(9, "YlOrRd"))
+getPalette  = colorRampPalette(c('#ffffd4','#fed98e','#fe9929','#d95f0e','#993404'))
 
 plot <- ggplot() +
   geom_sf(data = temp, aes(fill = sailing)) +
   scale_fill_manual(values = getPalette(colourCount), name = "Passenger ferry NOx \n emissions (kg/year)") +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
-        panel.background = element_blank())
+        panel.background = element_blank(),
+        legend.text = element_text(size=6),
+        legend.title = element_text(size=8)) +
+  guides(fill=guide_legend(ncol=2),
+         color = guide_legend(override.aes = list(shape = 0.5)))
 
 ggsave('large_grid_nox_passenger_sailing_before_merge.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
