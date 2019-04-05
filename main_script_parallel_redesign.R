@@ -6,6 +6,7 @@ library(scales)
 library(snowfall)
 library(fasterize)
 library(raster)
+library(RColorBrewer)
 
 ## Script to process river emissions and GPS data.
 ## Key datasets test edit
@@ -49,6 +50,34 @@ emissions                 <- left_join(emissions, unique(vessel_class[,c('aggreg
 
 # Now get the grid by exact cut
 grid                      <- st_read('grids/LAEIGridExtensionV2.gpkg', quiet = T)
+
+## Make a map showing the exaxt cut issue
+temp                      <-  left_join(grid, emissions,  by = c('CellID' = 'cellid')) %>%
+                                rename(large_grid_id = GRID_ID0, x = X_COORD, y = Y_COORD)
+
+focus_area                <- st_as_sf(as(raster::extent(529735, 533671, 180049, 181052), 'SpatialPolygons')) %>% 
+                              st_set_crs(27700)
+
+temp                      <- st_crop(temp, focus_area) %>% 
+                              filter(pollutant == 'NOx' & ship_type == 'Passenger (ferry)') %>%
+                              arrange(sailing)
+
+temp$sailing              <- factor(temp$sailing)
+
+colourCount = length(unique(temp$sailing))
+getPalette  = colorRampPalette(brewer.pal(9, "YlOrRd"))
+
+plot <- ggplot() +
+  geom_sf(data = temp, aes(fill = sailing)) +
+  scale_fill_manual(values = getPalette(colourCount), name = "Passenger ferry NOx \n emissions (kg/year)") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank())
+
+ggsave('large_grid_nox_passenger_sailing_before_merge.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
+
+rm(plot, colourCount, getPalette, temp, focus_area)
+                              
 
 # Make map of emissions before aggregating
 
