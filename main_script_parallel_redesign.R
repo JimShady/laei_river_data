@@ -73,10 +73,11 @@ plot <- ggplot() +
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
         panel.background = element_blank(),
-        legend.text = element_text(size=6),
-        legend.title = element_text(size=8)) +
+        legend.text = element_text(size=5),
+        legend.title = element_text(size=6)) +
   guides(fill=guide_legend(ncol=2),
-         color = guide_legend(override.aes = list(shape = 0.5)))
+         color = guide_legend(override.aes = list(shape = 0.5))) +
+  geom_sf(data = st_crop(st_transform(the_thames,27700),temp), fill = NA, colour='blue')
 
 ggsave('large_grid_nox_passenger_sailing_before_merge.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
@@ -119,7 +120,7 @@ plot <- ggplot() +
 
 ggsave('large_grid_nox_roro_sailing_sailing.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
-rm(plot, nox_roro_sailing, colours, i, labels)
+rm(plot, nox_roro_sailing, colours, i, labels, temp)
 
 
 # Now aggregte
