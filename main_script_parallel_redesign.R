@@ -120,7 +120,7 @@ plot <- ggplot() +
 
 ggsave('large_grid_nox_roro_sailing_sailing.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
-rm(plot, nox_roro_sailing, colours, i, labels, temp)
+rm(plot, nox_roro_sailing, colours, i, labels)
 
 
 # Now aggregte
@@ -271,6 +271,7 @@ ggsave('one_day_gps_example.png', plot = plot, path = 'maps/', height = 5, width
 
 
 ## Function to calculate how many GPS points are within each large square, and within each small grid square
+a <- 1
 
 process_gps_data <-  function(x) {
   
@@ -305,6 +306,9 @@ process_gps_data <-  function(x) {
   
   rm(gps_per_small_grid_id)
   
+  a <- a+1
+  print(a)
+  
 }
 
 # Set-up parallel and fun above function
@@ -312,7 +316,7 @@ process_gps_data <-  function(x) {
 sfInit(parallel=TRUE, cpus=parallel:::detectCores()-1)
 sfLibrary(sf)
 sfLibrary(tidyverse)
-sfExport(list=list("small_grid", "vessel_class"))
+sfExport(list=list("small_grid", "vessel_class", "a"))
 sfLapply(list_of_gps_data, fun=process_gps_data)
 sfStop()
 
@@ -513,7 +517,7 @@ small_grid_result           <- as.tibble(small_grid_result)
 
 # Output small grid in desired format
 result <- small_grid_result %>% 
-                dplyr::select(x,y,group, pollutant, emissions) %>% 
+                dplyr::select(x,y,group, pollutant, emissions, berth_name) %>% 
                 spread(pollutant, emissions) %>% 
                 rename_all(tolower) %>% 
                 mutate(no2 = nox * 0.05,
@@ -525,20 +529,33 @@ rm(result)
 
 # Output large grid in desired format
 
-result <- grid_emissions %>%
-                st_drop_geometry() %>%
-                mutate(emissions = sailing + berth) %>%
-                dplyr::select(pollutant, large_grid_id, emissions) %>%
-                group_by(pollutant, large_grid_id) %>%
-                summarise(emissions = sum(emissions, na.rm=T)) %>%
-                spread(pollutant, emissions) %>%
-                rename_all(tolower) %>%
-                mutate(no2 = nox * 0.05,
-                       year = 2016)
+nox <- grid_emissions %>% st_drop_geometry() %>% dplyr::select(pollutant, large_grid_id, group, sailing, berth) %>%
+                group_by(pollutant, group, large_grid_id) %>%
+                summarise(sailing_emissions = sum(sailing, na.rm=T),
+                          berth_emissions   = sum(berth, na.rm=T)) %>%
+      filter(pollutant == 'NOx')
+
+no2 <- nox %>% mutate(sailing_emissions = sailing_emissions * 0.05,
+                      berth_emissions   = berth_emissions * 0.05) %>% ungroup() %>% mutate(pollutant = 'NO2')
+                
+
+pm <- grid_emissions %>% st_drop_geometry() %>% dplyr::select(pollutant, large_grid_id, group, sailing, berth) %>%
+  group_by(pollutant, group, large_grid_id) %>%
+  summarise(sailing_emissions = sum(sailing, na.rm=T),
+            berth_emissions   = sum(berth, na.rm=T)) %>%
+  filter(pollutant == 'PM')
+
+pm25 <- grid_emissions %>% st_drop_geometry() %>% dplyr::select(pollutant, group, large_grid_id, sailing, berth) %>%
+  group_by(pollutant, group, large_grid_id) %>%
+  summarise(sailing_emissions = sum(sailing, na.rm=T),
+            berth_emissions   = sum(berth, na.rm=T)) %>%
+  filter(pollutant == 'PM2.5')
+
+result <- bind_rows(nox, pm, pm25, no2) %>% rename_all(tolower)
 
 write_csv(result, 'results/shipping_emissions_1km.csv')
 
-rm(result)
+rm(result, no2, nox, pm, pm25)
 
 ## Make a map of the final small grid shipping emissions
 small_grid <- read_csv('results/shipping_emissions_20m.csv') %>%
