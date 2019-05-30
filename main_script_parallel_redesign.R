@@ -238,6 +238,8 @@ ggsave('small_grid_example.png', plot = plot, path = 'maps/', height = 5, width 
 rm(plot)
 
 ## Get GPS data 
+## These files are produced by Andrew. He processed the AIS data in Python.
+## THe scripts to do this, are here: https://github.com/JimShady/laei_river_data/tree/master/ais_processing
 list_of_gps_data             <- list.files('gps/', full.names=T, pattern = 'Rdata')
 list_of_gps_data             <- data.frame(filename         = list_of_gps_data,
                                            actual_date      = NA,
