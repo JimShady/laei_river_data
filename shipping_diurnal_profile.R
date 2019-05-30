@@ -33,5 +33,5 @@ profile <- result %>% mutate(wday = replace(wday, wday %in% c(7,1), 'weekend')) 
                       group_by(wday, hour) %>%
                       summarise(records = sum(records))
 
-write_csv(profile, 'shipping_profile.csv')
+write_csv(profile, 'results/shipping_profile.csv')
   
