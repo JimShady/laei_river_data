@@ -368,10 +368,11 @@ rm(plot)
 # Need to do something about the berths now.
 #Maybe need to buffer berths to intersect with more small grid squares
 
-berths <- st_read('shapefiles/Berths.shp') %>%
-            dplyr::select(berth_name) %>%
-            st_set_crs(27700) %>%
-            filter(berth_name != 'Coldharbour Jetty')
+berths <- read_csv('berths/berths_v1.csv') %>%
+            st_as_sf(coords = c('x', 'y')) %>%
+            st_set_crs(4326) %>%
+            filter(berth_name != 'Coldharbour Jetty') %>%
+            st_transform(27700)
 
 ## Plot the berths
 plot <- ggplot() + 
