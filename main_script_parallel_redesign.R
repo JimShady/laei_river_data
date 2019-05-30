@@ -17,7 +17,7 @@ library(RColorBrewer)
 
 ## 3. The emissions emissions/inventory_export_2016.csv' which are by LAEI exact cut over London
 
-## 4. A shapefile of the grid exact cut
+## 4. A shapefile/geojson/geopackage of the grid exact cut
 
 latlong = "+init=epsg:4326"
 ukgrid  = "+init=epsg:27700"
@@ -132,6 +132,7 @@ emissions <- emissions %>%
               ungroup()
 
 # Link grid exact cut to eimssions exact cut, and remove some unncecessary data
+# THis turns the data from exact cut to just grid square
 grid_emissions            <- left_join(emissions, grid, by = c('cellid' = 'CellID')) %>%
                              rename(large_grid_id = GRID_ID0, x = X_COORD, y = Y_COORD) %>%
                              dplyr::select(cellid, large_grid_id, x, y, pollutant, group, sailing, berth) %>%
@@ -209,8 +210,9 @@ ggsave('large_grid_berth_group_one_nox.png', plot = plot, path = 'maps/', height
 
 rm(plot, nox_group_one_berth, colours, i, labels)
 
-## For each grid_emissions there is one square per group and per pollutant. More data than we need for the spatial joins with the
-## GPS data. So just get unique polygons. Give the unique polygons an ID. Then join these new unique polygon IDs to the full list. Like
+## For each grid_emissions there is one square per group and per pollutant. More data than we need for
+##the spatial joins with the GPS data. So just get unique polygons. Give the unique polygons an ID. 
+## Then join these new unique polygon IDs to the full list. Like
 ## a left join look-up thing
 
 ## Setup the small grids
@@ -249,6 +251,7 @@ list_of_gps_data$actual_date <- substr(x     = list_of_gps_data$filename,
                                        stop  = nchar(list_of_gps_data$filename)-6)
 list_of_gps_data$actual_date <- as.Date(list_of_gps_data$actual_date, format = '%d_%b_%Y')
 list_of_gps_data             <- list_of_gps_data[order(list_of_gps_data$actual_date),]
+
 list_of_gps_data             <- as.list(list_of_gps_data$filename)
 
 ## Example plot of one days days
@@ -272,7 +275,8 @@ plot <- ggplot() +
 ggsave('one_day_gps_example.png', plot = plot, path = 'maps/', height = 5, width = 15, units='cm')
 
 
-## Function to calculate how many GPS points are within each large square, and within each small grid square
+## Function to calculate how many GPS points are within each large square,
+## and within each small grid square
 a <- 1
 
 process_gps_data <-  function(x) {
@@ -368,7 +372,6 @@ ggsave('small_grid_gps_count_example.png', plot = plot, path = 'maps/', height =
 rm(plot)
 
 # Need to do something about the berths now.
-#Maybe need to buffer berths to intersect with more small grid squares
 
 berths <- read_csv('berths/berths_v1.csv') %>%
             st_as_sf(coords = c('x', 'y')) %>%
@@ -399,10 +402,15 @@ small_grid_result$berth_name <- as.character(small_grid_result$berth_name)
 ## remove data where there's very few GPS points
 small_grid_result    <- filter(small_grid_result, count > 20)
 
+## For the large grids, sum up all the GPS points in that large grid.
+## FIrst by sailing, then by berths
+large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) &
+                                                                is.na(small_grid_result$berth_name),],
+                                       count ~ group + large_grid_id, FUN=sum)
 
-##
-large_grid_sailing_counts <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & is.na(small_grid_result$berth_name),],  count ~ group + large_grid_id, FUN=sum)
-large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) & !is.na(small_grid_result$berth_name),], count ~ group + large_grid_id, FUN=sum)
+large_grid_berth_counts   <- aggregate(data=small_grid_result[!is.na(small_grid_result$count) &
+                                                                !is.na(small_grid_result$berth_name),],
+                                       count ~ group + large_grid_id, FUN=sum)
 
 names(large_grid_sailing_counts)[3] <- 'sailing_count'
 names(large_grid_berth_counts)[3]   <- 'berth_count'
@@ -427,6 +435,7 @@ small_grid_result    <-   rbind(small_grid_result %>% mutate(pollutant = 'NOx'),
                                 small_grid_result %>% mutate(pollutant = 'PM'),
                                 small_grid_result %>% mutate(pollutant = 'PM2.5'))
 
+# Join the small grid result to the original emissions
 small_grid_result         <-  left_join(small_grid_result, st_drop_geometry(grid_emissions),
                                         by = c("large_grid_id" = "large_grid_id",
                                                "group" = "group",
@@ -532,7 +541,9 @@ rm(result)
 
 # Output large grid in desired format
 
-nox <- grid_emissions %>% st_drop_geometry() %>% dplyr::select(pollutant, large_grid_id, group, sailing, berth) %>%
+nox <- grid_emissions %>%
+        st_drop_geometry() %>%
+         dplyr::select(pollutant, large_grid_id, group, sailing, berth) %>%
                 group_by(pollutant, group, large_grid_id) %>%
                 summarise(sailing_emissions = sum(sailing, na.rm=T),
                           berth_emissions   = sum(berth, na.rm=T)) %>%
